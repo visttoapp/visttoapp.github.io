@@ -1,0 +1,37 @@
+body[data-tema="neutro"]{--page:#f3f3ef;--panel:#fff;--ink:#232621;--mute:#70756d;--line:#dedfd8;--accent:#bacd9d;--plum:#232621;--ocre:#d5e2be}
+body[data-tema="escuro"]{--page:#171717;--panel:#202020;--branco:#202020;--ink:#f5f5f2;--ink-2:#fff;--mute:#aaa9a3;--line:#3a3a37;--accent:#ff5200;--ocre:#ff5200;--plum:#ff5200;--taupe:#aaa9a3;--serif:var(--sans)}
+body[data-tema="escuro"] .btn.primary{background:#ff5200;color:#171717}
+body[data-tema="escuro"] .agency .logo{height:42px;width:180px;overflow:hidden;position:relative}
+body[data-tema="escuro"] .agency .logo img{position:absolute;width:193px;max-width:none;height:136px;top:-54px;left:-4px}
+body[data-tema="escuro"] #mark{width:110px;height:28px;overflow:hidden;position:relative;background:#202020}
+body[data-tema="escuro"] #mark img{position:absolute;width:118px;max-width:none;height:83px;top:-33px;left:-3px}
+.agency .logo img{width:150px;height:auto}
+.admin .login{max-width:440px;margin:9vh auto;padding:44px;border-radius:18px;box-shadow:0 16px 64px #23262108}
+.login h1{font-size:48px;line-height:1.02;letter-spacing:-2px;margin:22px 0}
+.login h1 span{color:#788e5b}
+.loginIntro{font-size:16px;color:var(--mute);margin-bottom:32px}
+.loginHelp{font-size:12px;color:var(--mute);margin:10px 0}
+#selAgencia{margin:8px 0 22px}#filterStatus{max-width:220px}#accessCard p{margin:12px 0}
+.admin .card:has(table){overflow-x:auto}.admin table{min-width:740px}
+.admin .hist{max-height:230px;overflow:auto}.admin #titulo{margin-bottom:16px}
+.admin #btnRotate{font-size:11px;text-align:left;padding:8px 0}
+@media(max-width:600px){.admin .login{margin:24px 16px;padding:28px}.login h1{font-size:42px}}
+.app>.main,.app>.sidebar,.wrap{min-width:0}
+@media(max-width:900px){.app{grid-template-columns:minmax(0,1fr)}}
+body[data-tema="escuro"] .pill.aprovado{background:#273d2a;color:#b3ddbc}
+body[data-tema="escuro"] .pill.ajuste{background:#4a2b1a;color:#ffb386}
+body[data-tema="escuro"] .link,body[data-tema="escuro"] .drop:hover{background:#292929}
+.wordmark{font-family:var(--serif);font-size:26px;letter-spacing:-.5px;color:var(--ink)}
+.admin .login .brandmark{display:flex;align-items:center;gap:10px}.admin .login .brandmark img{width:34px;height:34px}
+#accessCard .grid2{margin:10px 0}#accessList .membro{display:flex;flex-wrap:wrap;align-items:center;gap:8px;padding:10px 0;border-top:1px solid var(--line)}
+#accessList .membro span{flex:1 1 220px;min-width:0;overflow-wrap:anywhere}#accessList .membro small{color:var(--mute)}#accessList select{max-width:190px}
+.papel{display:inline-block;font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--mute);margin-top:2px}
+.resetBox{display:flex;flex-wrap:wrap;gap:8px;width:100%}.resetBox input{flex:1 1 220px;margin:0}
+#btnEsqueci{width:100%;margin-top:6px}
+.squad{border-top:1px solid var(--line);padding:12px 0}.squadHead{display:flex;flex-wrap:wrap;align-items:center;gap:10px}.squadHead small{color:var(--mute)}
+.chips{display:flex;flex-wrap:wrap;gap:6px;margin:8px 0}.chip{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line);border-radius:99px;padding:4px 6px 4px 12px;font-size:13px}
+.chip small{color:var(--mute)}.chip button{border:0;background:none;color:var(--mute);cursor:pointer;font-size:15px;line-height:1}
+.addMembro{display:flex;flex-wrap:wrap;gap:8px;align-items:center}.addMembro input,.addMembro select{flex:1 1 220px;margin:0;min-width:0}
+body.trocar-senha .wrap>:not(#cardSenha),body.trocar-senha .sidebar .client,body.trocar-senha #cardLink,body.trocar-senha #btnFecharSenha,body.trocar-senha #btnMinhaSenha{display:none!important}
+#loteBox{margin:18px 0;border-top:1px solid var(--line);padding-top:12px}#loteBox summary{cursor:pointer;font-weight:500}#loteBox textarea{font-family:ui-monospace,monospace;font-size:13px}
+#loteMsg{white-space:pre-line}

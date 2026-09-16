@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta name="referrer" content="no-referrer">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Prévia do feed · Vistto</title>
+<link rel="icon" href="assets/vistto.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Jost:wght@400;500&family=Cormorant+Garamond:wght@500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/style.css?v=20260916f"><link rel="stylesheet" href="css/agencies.css?v=20260916f">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body data-tema="neutro">
+
+<div class="app">
+  <aside class="sidebar">
+    <div class="agency">
+      <div>
+        <div class="logo" id="agencyLogo"></div>
+        <div class="label" id="agencyTag"></div>
+      </div>
+      <button class="collapse" title="Recolher" aria-label="Recolher barra lateral">
+        <svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M7 2 3 6l4 4M11 2 7 6l4 4"/></svg>
+      </button>
+    </div>
+
+    <div class="client">
+      <h1 id="clientName"></h1>
+      <div class="label month" id="clientMonth"></div>
+      <div class="meta" id="clientMeta"></div>
+      <select class="months" id="months" aria-label="Mês" hidden></select>
+      <div class="summary" id="summary"></div>
+    </div>
+
+    <nav class="cal">
+      <div class="label">Calendário do mês</div>
+      <ul id="calList"></ul>
+    </nav>
+
+    <p class="foot" id="foot"></p>
+  </aside>
+
+  <main class="main">
+    <div class="wrap">
+      <header class="head">
+        <div class="mark" id="mark"></div>
+        <div>
+          <div class="label">Prévia do feed &nbsp;·&nbsp; Aprovação</div>
+          <h2 id="title"></h2>
+        </div>
+      </header>
+
+      <div class="sub">
+        <p id="intro"></p>
+        <div class="legend" id="legend"></div>
+      </div>
+
+      <section class="profile" id="profile"></section>
+      <section class="hl" id="hl"></section>
+      <section class="feed" id="feed"></section>
+      <div class="empty" id="empty" hidden></div>
+    </div>
+  </main>
+</div>
+
+<div class="backdrop" id="backdrop" role="dialog" aria-modal="true" aria-label="Post">
+  <div class="modal" id="modal"></div>
+</div>
+
+<script src="js/config.js?v=20260916f"></script>
+<script src="js/brand.js?v=20260916f"></script>
+<script src="js/client-api.js?v=20260916f"></script>
+<script src="js/app.js?v=20260916f"></script>
+</body>
+</html>

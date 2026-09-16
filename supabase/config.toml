@@ -1,0 +1,8 @@
+[functions.cliente]
+verify_jwt = false
+
+[functions.acessos]
+verify_jwt = false
+
+[functions.primeiro-acesso]
+verify_jwt = false
