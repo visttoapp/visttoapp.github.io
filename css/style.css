@@ -215,6 +215,8 @@ td:nth-child(3){min-width:160px}
 .row-actions{white-space:nowrap}
 .row-actions button{display:inline-flex;align-items:center;min-height:28px;padding:0 8px;border-radius:var(--r-sm);font-size:12px;font-weight:500;color:var(--text-2);margin:0 2px 4px 0;border:1px solid var(--border);background:var(--surface)}
 .row-actions button:hover{background:var(--surface-3);color:var(--text)}
+.row-actions button[data-baixar]{background:var(--brand-soft);border-color:var(--brand-border);color:var(--brand-text)}
+.row-actions button[data-baixar]:disabled{opacity:.6;cursor:progress}
 .row-actions button[data-reset]{background:var(--success-soft);border-color:var(--success-border);color:var(--success)}
 .row-actions button[data-del]{border-color:transparent;background:transparent;color:var(--danger)}
 .row-actions button[data-del]:hover{background:var(--danger-soft)}

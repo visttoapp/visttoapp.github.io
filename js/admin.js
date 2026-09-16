@@ -469,6 +469,64 @@
     await selectMes(mes.id);
   };
 
+  /* ---------- download dos originais ---------- */
+  function arquivosPost(p) {
+    const lista = p.tipo === 'reel' ? [p.video_url, p.capa_url] : (p.slides || []);
+    return lista.filter(Boolean);
+  }
+  const slugArquivo = t => String(t || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+  function extensao(ref) {
+    const limpo = String(ref).split(/[?#]/)[0];
+    const m = limpo.match(/\.([a-z0-9]{2,5})$/i);
+    return m ? m[1].toLowerCase() : 'jpg';
+  }
+  function salvarBlob(blob, nome) {
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob); a.download = nome;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(a.href), 60000);
+  }
+  let zipPronto;
+  function carregarZip() {
+    return zipPronto ||= new Promise((ok, erro) => {
+      if (window.JSZip) return ok(window.JSZip);
+      const sc = document.createElement('script');
+      sc.src = 'js/vendor/jszip.min.js?v=3.10.1';
+      sc.onload = () => ok(window.JSZip);
+      sc.onerror = () => { zipPronto = null; erro(new Error('Não foi possível preparar o arquivo .zip.')); };
+      document.head.appendChild(sc);
+    });
+  }
+  async function baixarPost(p, botao) {
+    if (!p) return;
+    const refs = arquivosPost(p);
+    if (!refs.length) return alert('Este post ainda não tem arquivos.');
+    const texto = botao.textContent;
+    botao.disabled = true; botao.textContent = 'baixando…';
+    try {
+      await MEDIA.prepare(sb, refs);
+      const base = [slugArquivo(cliente?.nome) || 'cliente', mes?.ano_mes, 'post-' + (slugArquivo(p.numero) || String(posts.indexOf(p) + 1).padStart(2, '0'))].filter(Boolean).join('_');
+      const nomes = refs.map((r, i) => {
+        if (p.tipo === 'reel') return `${base}_${r === p.video_url ? 'video' : 'capa'}.${extensao(r)}`;
+        return refs.length > 1 ? `${base}_${String(i + 1).padStart(2, '0')}.${extensao(r)}` : `${base}.${extensao(r)}`;
+      });
+      const blobs = await Promise.all(refs.map(async r => {
+        const res = await fetch(MEDIA.url(r));
+        if (!res.ok) throw new Error('Um dos arquivos não pôde ser baixado (' + res.status + ').');
+        return res.blob();
+      }));
+      if (blobs.length === 1) { salvarBlob(blobs[0], nomes[0]); return; }
+      const JSZip = await carregarZip();
+      const zip = new JSZip();
+      blobs.forEach((b, i) => zip.file(nomes[i], b, { binary: true }));
+      salvarBlob(await zip.generateAsync({ type: 'blob', compression: 'STORE' }), base + '.zip');
+    } catch (e) {
+      alert('Não foi possível baixar: ' + (e.message || 'tente de novo.'));
+    } finally {
+      botao.disabled = false; botao.textContent = texto;
+    }
+  }
+
   function renderLista() {
     $('lista').innerHTML = posts.filter(p=>!$('filterStatus').value || p.status===$('filterStatus').value).map(p => {
       const cover = p.capa_url || (p.slides && p.slides[0]) || '';
@@ -482,6 +540,7 @@
         <td>${ret.length ? `<ul class="hist">${ret.map(a => `<li class="${a.acao}"><b>${a.acao === 'aprovado' ? 'Aprovado' : a.acao === 'ajuste' ? 'Ajuste' : 'Comentário'}</b>${a.autor ? ' · ' + esc(a.autor) : ''} · ${new Date(a.created_at).toLocaleDateString('pt-BR')}${a.comentario ? `<p>${esc(a.comentario)}</p>` : ''}</li>`).join('')}</ul>` : '<small style="color:var(--mute)">—</small>'}</td>
         <td class="row-actions">
           <button data-edit="${p.id}">editar</button>
+          ${arquivosPost(p).length ? `<button data-baixar="${p.id}" title="Baixa os arquivos originais, na qualidade em que foram enviados">baixar</button>` : ''}
           ${p.status === 'ajuste' ? `<button data-reset="${p.id}">marcar como ajustado</button>` : ''}
           <button data-up="${p.id}">↑</button><button data-down="${p.id}">↓</button>
           ${nivel >= 2 ? `<button data-del="${p.id}">excluir</button>` : ''}
@@ -489,6 +548,7 @@
     }).join('') || `<tr class="empty-row"><td colspan="7">${mes ? 'Nenhum post neste filtro ainda.' : cliente ? 'Crie um mês para começar a subir posts.' : (nivel < 2 && !clientes.length ? 'Nenhum cliente liberado para você ainda. Fale com o Head do seu squad.' : 'Escolha ou crie um cliente para começar.')}</td></tr>`;
 
     $('lista').querySelectorAll('[data-edit]').forEach(b => b.onclick = () => editPost(b.dataset.edit));
+    $('lista').querySelectorAll('[data-baixar]').forEach(b => b.onclick = () => baixarPost(posts.find(p => p.id === b.dataset.baixar), b));
     $('lista').querySelectorAll('[data-del]').forEach(b => b.onclick = async () => {
       if (!confirm('Excluir este post?')) return;
       await run(sb.from('posts').delete().eq('id', b.dataset.del)); await selectMes(mes.id);
