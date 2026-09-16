@@ -291,6 +291,7 @@
   function renderTop() {
     $('titulo').textContent = cliente ? `${cliente.nome}${mes ? ' · ' + mes.titulo : ''}` : (nivel >= 2 ? 'Comece criando um cliente' : 'Nenhum cliente liberado');
     $('btnNovoMes').hidden = !cliente;
+    $('btnExcluirMes').hidden = !mes || nivel < 2;
     $('chkPub').checked = !!(mes && mes.publicado);
     $('chkPub').disabled = !mes || nivel < 2;
     const base = new URL('c',location.href).href;
@@ -364,6 +365,14 @@
     $('mIntro').value = ''; $('msgMes').textContent = ''; $('cardMes').hidden = false;
   };
   $('btnFecharMes').onclick = () => $('cardMes').hidden = true;
+  $('btnExcluirMes').onclick = async () => {
+    if (!mes || nivel < 2) return;
+    const n = posts.length;
+    if (!confirm(`Excluir o mês "${mes.titulo}" de ${cliente.nome}${n ? ` e os ${n} post${n > 1 ? 's' : ''} dele` : ''}? Não dá para desfazer.`)) return;
+    const { data, error } = await sb.from('meses').delete().eq('id', mes.id).select('id');
+    if (error || !data?.length) return alert(error?.message || 'Você não tem permissão para excluir este mês.');
+    await selectCliente(cliente.id);
+  };
   $('btnSalvarMes').onclick = async () => {
     const row = { cliente_id: cliente.id, ano_mes: $('mAnoMes').value.trim(), titulo: $('mTitulo').value.trim(), intro: $('mIntro').value.trim() || null };
     if (!/^\d{4}-\d{2}$/.test(row.ano_mes) || !row.titulo) { $('msgMes').textContent = 'Use o formato 2026-10 e um título.'; $('msgMes').className = 'msg err'; return; }
