@@ -7,34 +7,32 @@
 <title>Prévia do feed · Vistto</title>
 <link rel="icon" href="assets/vistto.svg" type="image/svg+xml">
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Jost:wght@400;500&family=Cormorant+Garamond:wght@500&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/style.css?v=20260916g"><link rel="stylesheet" href="css/agencies.css?v=20260916g">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Cormorant+Garamond:wght@500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/style.css?v=20260917b"><link rel="stylesheet" href="css/agencies.css?v=20260917b">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
-<body data-tema="neutro">
+<body class="cliente" data-tema="neutro">
 
 <div class="app">
   <aside class="sidebar">
     <div class="agency">
       <div>
         <div class="logo" id="agencyLogo"></div>
-        <div class="label" id="agencyTag"></div>
+        <span class="label" id="agencyTag"></span>
       </div>
-      <button class="collapse" title="Recolher" aria-label="Recolher barra lateral">
-        <svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M7 2 3 6l4 4M11 2 7 6l4 4"/></svg>
-      </button>
     </div>
 
     <div class="client">
+      <span class="eyebrow">Cliente</span>
       <h1 id="clientName"></h1>
-      <div class="label month" id="clientMonth"></div>
+      <span class="label month" id="clientMonth"></span>
       <div class="meta" id="clientMeta"></div>
       <select class="months" id="months" aria-label="Mês" hidden></select>
       <div class="summary" id="summary"></div>
     </div>
 
     <nav class="cal">
-      <div class="label">Calendário do mês</div>
+      <span class="label">Calendário do mês</span>
       <ul id="calList"></ul>
     </nav>
 
@@ -42,11 +40,11 @@
   </aside>
 
   <main class="main">
-    <div class="wrap">
+    <div class="wrap feed-wrap">
       <header class="head">
         <div class="mark" id="mark"></div>
         <div>
-          <div class="label">Prévia do feed &nbsp;·&nbsp; Aprovação</div>
+          <span class="eyebrow">Prévia do feed · Aprovação</span>
           <h2 id="title"></h2>
         </div>
       </header>
@@ -68,9 +66,9 @@
   <div class="modal" id="modal"></div>
 </div>
 
-<script src="js/config.js?v=20260916g"></script>
-<script src="js/brand.js?v=20260916g"></script>
-<script src="js/client-api.js?v=20260916g"></script>
-<script src="js/app.js?v=20260916g"></script>
+<script src="js/config.js?v=20260917b"></script>
+<script src="js/brand.js?v=20260917b"></script>
+<script src="js/client-api.js?v=20260917b"></script>
+<script src="js/app.js?v=20260917b"></script>
 </body>
 </html>

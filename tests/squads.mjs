@@ -14,9 +14,9 @@ create function public.gen_random_bytes(n integer) returns bytea language sql as
 create function extensions.gen_random_bytes(n integer) returns bytea language sql as $$select public.gen_random_bytes(n) $$;`);
 const rd=f=>fs.readFileSync(new URL(f,import.meta.url),'utf8');
 await db.exec(rd('./fixtures/schema-v1.sql').replace('create extension if not exists pgcrypto;',''));
-for(const f of ['multi-agencias','hierarquia','squads','convites']) await db.exec(rd(`../supabase/${f}.sql`));
+for(const f of ['multi-agencias','hierarquia','squads','convites','divisoes']) await db.exec(rd(`../supabase/${f}.sql`));
 const A={a:'10000000-0000-4000-8000-000000000001',b:'10000000-0000-4000-8000-000000000002'};
-const P={admin:null,dono:['b','dono'],head1:['b','head'],head2:['b','head'],des1:['b','designer'],des2:['b','designer'],traf:['b','gestor_trafego'],semSquad:['b','designer'],outraAg:['a','head'],livre:null,livre2:null};
+const P={admin:null,dono:['b','dono'],head1:['b','head'],head2:['b','head'],des1:['b','designer'],des2:['b','designer'],traf:['b','gestor_trafego'],semSquad:['b','designer'],outraAg:['a','head'],desA:['a','designer'],livre:null,livre2:null};
 const id={};let i=1;for(const k in P)id[k]=`40000000-0000-4000-8000-${String(i++).padStart(12,'0')}`;
 await db.exec(`insert into auth.users values ${Object.keys(P).map(k=>`('${id[k]}','${k}@x.test',now())`).join(',')};
 insert into administradores values('${id.admin}');
@@ -37,7 +37,7 @@ let checks=0;const ok=()=>checks++;
 async function as(who,fn){await db.exec(`set role authenticated;set request.jwt.claim.sub='${id[who]}';`);try{return await fn();}finally{await db.exec('reset role;');}}
 const nomes=async()=>(await rows('select nome from clientes order by nome')).map(r=>r.nome).join(',');
 const midias=async()=>(await rows('select name from storage.objects')).map(r=>r.name.split('/')[1]).sort().join(',');
-const expect={admin:'c0,c1,c2,ca',dono:'c0,c1,c2',head1:'c1',head2:'c2',des1:'c1',des2:'c2',traf:'c1,c2',semSquad:'',outraAg:'ca',livre:''};
+const expect={admin:'c0,c1,c2,ca',dono:'c0,c1,c2',head1:'c1',head2:'c2',des1:'c1',des2:'c2',traf:'c1,c2',semSquad:'',outraAg:'ca',livre:'',desA:'ca'};
 for(const [w,e] of Object.entries(expect)) await as(w,async()=>{
   assert.equal(await nomes(),e,w+' clientes');ok();
   assert.equal((await rows('select count(*)::int n from posts'))[0].n,e?e.split(',').length:0,w+' posts');ok();
@@ -103,6 +103,17 @@ await as('des2',async()=>{assert.equal(await nomes(),'');ok();});
 await as('admin',async()=>{assert.equal((await rows('select listar_squads($1) s',[A.a]))[0].s.length,1);ok();});
 await q(`insert into convites(usuario_id,codigo_hash,expira_em) values($1,'h',now())`,[id.des1]);
 await as('head1',async()=>{assert.equal((await rows('select listar_acessos($1) l',[A.b]))[0].l.find(x=>x.email==='des1@x.test').pendente,true);ok();await assert.rejects(q('select * from convites'));ok();await assert.rejects(q(`select * from convite_por_email('des1@x.test')`));ok();});
+await as('desA',async()=>{assert.equal((await rows('select meu_contexto() c'))[0].c.agencias[0].usa_squads,false);ok();await assert.rejects(q('select link_cliente($1)',[C.ca]));ok();});
+await as('outraAg',async()=>{
+  const ca2=(await rows(`insert into clientes(agencia_id,nome,slug) values($1,'sem squad','sem-squad') returning id`,[A.a]))[0].id;ok();
+  assert.equal((await rows('select link_cliente($1) t',[ca2]))[0].t.length>0,true);ok();
+  assert.ok((await rows('select listar_acessos($1) l',[A.a]))[0].l.some(x=>x.email==='desA@x.test'&&x.pode_gerir));ok();
+  await q(`select autorizar_acesso($1,'livre2@x.test','designer')`,[A.a]);ok();
+  await assert.rejects(q('select salvar_squad($1,$2)',[A.a,'Nao']));ok();
+  await q('select revogar_acesso($1,$2)',[A.a,id.desA]);ok();
+});
+await as('livre2',async()=>{assert.equal((await rows('select nome from clientes order by nome')).map(r=>r.nome).join(),'ca,sem squad');ok();});
+await as('dono',async()=>{assert.equal((await rows('select meu_contexto() c'))[0].c.agencias[0].usa_squads,true);ok();});
 await db.exec('set role anon');
 await assert.rejects(q('select listar_squads($1)',[A.b]));ok();
 assert.equal((await rows(`select registrar_aprovacao($1,$2,'aprovado',null,'C') r`,['c2'.repeat(12),PO.c2]))[0].r.status,'aprovado');ok();

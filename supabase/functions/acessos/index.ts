@@ -19,7 +19,7 @@ Deno.serve(async req=>{
   if(authError||!auth.user)return reply({error:'Sessão inválida.'},401);
   const {acao,email,agencia_id,papel,nome,usuario_id,squad_id}=await req.json();
   if(typeof agencia_id!=='string'||!UUID.test(agencia_id))return reply({error:'Agência inválida.'},400);
-  const {data:agency,error:agencyError}=await sb.from('agencias').select('id').eq('id',agencia_id).maybeSingle();
+  const {data:agency,error:agencyError}=await sb.from('agencias').select('id,usa_squads').eq('id',agencia_id).maybeSingle();
   if(agencyError||!agency)return reply({error:'Agência inválida.'},400);
   const {data:owner,error:ownerError}=await sb.from('administradores').select('usuario_id').eq('usuario_id',auth.user.id).maybeSingle();
   if(ownerError)return reply({error:'Não foi possível conferir sua permissão.'},400);
@@ -48,7 +48,7 @@ Deno.serve(async req=>{
    if(alvoError||!alvo||(NIVEL[alvo.papel]||0)>=nivel)return reply({error:'Você não pode redefinir a senha desta pessoa.'},403);
    const {data:alvoAdmin}=await sb.from('administradores').select('usuario_id').eq('usuario_id',usuario_id).maybeSingle();
    if(alvoAdmin)return reply({error:'Você não pode redefinir a senha desta pessoa.'},403);
-   if(nivel===2){
+   if(nivel===2&&agency.usa_squads){
     const meus=await meusSquads();
     const {data:dele,error:deleError}=await sb.from('squad_membros').select('squad_id').eq('usuario_id',usuario_id);
     if(deleError||!(dele||[]).some((r:any)=>meus.has(r.squad_id)))return reply({error:'Você só redefine senhas de quem está no seu squad.'},403);
@@ -67,11 +67,12 @@ Deno.serve(async req=>{
   if(nome!==undefined&&nome!==null&&(typeof nome!=='string'||nome.length>80))return reply({error:'Nome muito longo.'},400);
   if(NIVEL[papel]>=nivel)return reply({error:'Você não pode criar esse tipo de acesso.'},403);
   if(squad_id!==undefined&&squad_id!==null&&(typeof squad_id!=='string'||!UUID.test(squad_id)))return reply({error:'Squad inválido.'},400);
+  if(squad_id&&!agency.usa_squads)return reply({error:'Esta agência não trabalha com squads.'},400);
   if(squad_id){
    const {data:sq,error:sqError}=await sb.from('squads').select('id').eq('id',squad_id).eq('agencia_id',agencia_id).maybeSingle();
    if(sqError||!sq)return reply({error:'Squad inválido.'},400);
   }
-  if(nivel===2&&(!squad_id||!(await meusSquads()).has(squad_id)))return reply({error:'Escolha um dos seus squads.'},403);
+  if(nivel===2&&agency.usa_squads&&(!squad_id||!(await meusSquads()).has(squad_id)))return reply({error:'Escolha um dos seus squads.'},403);
   const {data:created,error}=await sb.auth.admin.createUser({email:email.trim().toLowerCase(),password:senhaAleatoria(),email_confirm:true,user_metadata:{trocar_senha:true}});
   if(error||!created.user)return reply({error:owner&&error?.code==='email_exists'?'E-mail já cadastrado. Use Autorizar conta existente.':'Não foi possível criar este login. Se a pessoa já tem conta, use Autorizar conta existente.'},400);
   const {error:membershipError}=await sb.from('agencia_usuarios').insert({agencia_id,usuario_id:created.user.id,papel,nome:typeof nome==='string'&&nome.trim()?nome.trim():null,criado_por:auth.user.id});

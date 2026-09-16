@@ -8,7 +8,7 @@ function load(name,client){
 }
 const req=(body,auth)=>new Request('https://test/functions/v1/acessos',{method:'POST',headers:{'Content-Type':'application/json',...(auth?{Authorization:'Bearer '+auth}:{})},body:JSON.stringify(body)});
 const AG='10000000-0000-4000-8000-000000000002',ALVO='30000000-0000-4000-8000-000000000009';
-const convites=new Map();let creates=0,deletes=0,updates=0,mode='ok',memberRole=null,alvoRole='designer',alvoAdmin=false,alvoCount=1,inserted=null,meus=['S1'],deles=['S1'],squadOk=true,squadInserts=[];
+const convites=new Map();let usaSquads=true;let creates=0,deletes=0,updates=0,mode='ok',memberRole=null,alvoRole='designer',alvoAdmin=false,alvoCount=1,inserted=null,meus=['S1'],deles=['S1'],squadOk=true,squadInserts=[];
 const fake={auth:{getUser:async jwt=>jwt==='valid'?{data:{user:{id:'caller'}}}:{data:{},error:{}},admin:{
   createUser:async()=>{creates++;return {data:{user:{id:'created'}}};},deleteUser:async()=>{deletes++;},updateUserById:async()=>{updates++;return {error:null};}}},
  from:table=>{
@@ -18,7 +18,7 @@ const fake={auth:{getUser:async jwt=>jwt==='valid'?{data:{user:{id:'caller'}}}:{
     if(table==='administradores')return {data:f.usuario_id==='caller'?(mode==='admin'?{usuario_id:'caller'}:null):(alvoAdmin?{usuario_id:ALVO}:null)};
     if(table==='agencia_usuarios')return {data:f.usuario_id==='caller'?(memberRole?{papel:memberRole}:null):(alvoRole?{papel:alvoRole}:null)};
     if(table==='squads')return {data:squadOk?{id:'S1'}:null};
-    return {data:mode==='badagency'?null:{id:AG}};
+    return {data:mode==='badagency'?null:{id:AG,usa_squads:usaSquads}};
    },
    then:(res)=>res(table==='squad_membros'?{data:(f.usuario_id==='caller'?meus:deles).map(x=>({squad_id:x})),error:null}:{count:alvoCount,error:null}),
    upsert:async row=>{convites.set(row.usuario_id,row);return {error:null};},
@@ -63,6 +63,12 @@ deles=['S2','S1'];{const r=await res(s);assert.equal(r.status,200);assert.match(
 memberRole='dono';deles=[];assert.equal(await call(s),200);assert.equal(updates,2);checks++;memberRole='head';
 mode='admin';memberRole=null;alvoRole='dono';alvoCount=2;assert.equal(await call(s),200);assert.equal(updates,3);checks++;
 mode='ok';
+// agência sem squads: Head cria e redefine sem squad; squad é recusado
+usaSquads=false;memberRole='head';meus=[];deles=[];alvoRole='designer';alvoCount=1;
+{const n=creates;assert.equal(await call(valid),200);assert.equal(creates,n+1);checks++;}
+assert.equal(await call({...valid,squad_id:'50000000-0000-4000-8000-000000000001'}),400);checks++;
+assert.equal(await call(s),200);checks++;
+usaSquads=true;
 // primeiro acesso
 {
  const {createHash}=await import('node:crypto');

@@ -124,13 +124,16 @@
     const squadOpts=squads.map(q=>`<option value="${q.id}">${esc(q.nome)}</option>`).join('');
     $('cSquad').innerHTML=(nivel>=3?'<option value="">Sem squad (só donos e sócios veem)</option>':'')+squadOpts;
     $('accessSquad').innerHTML=(nivel>=3?'<option value="">Sem squad</option>':'')+squadOpts;
-    $('accessSquad').hidden=nivel<3&&!squads.length;
-    $('btnAccess').hidden=nivel<2; $('btnNovoCliente').hidden=nivel<2||(nivel<3&&!squads.length); $('cardLink').hidden=nivel<2;
-    $('squadsBox').hidden=nivel<3;
+    $('accessSquad').closest('.field').hidden=!agencia.usa_squads||(nivel<3&&!squads.length);
+    $('btnAccess').hidden=nivel<2; $('btnNovoCliente').hidden=nivel<2||(nivel<3&&agencia.usa_squads&&!squads.length); $('cardLink').hidden=nivel<2;
+    const comSquads=!!agencia.usa_squads;
+    $('squadsBox').hidden=nivel<3||!comSquads;
+    $('cSquad').closest('.field').hidden=!comSquads;
+    if(!comSquads){$('accessSquad').closest('.field').hidden=true;$('accessSquad').innerHTML='<option value=""></option>';$('cSquad').innerHTML='<option value=""></option>';}
     $('titulo').style.cursor=nivel>=2?'pointer':''; $('titulo').title=nivel>=2?'Editar cliente':'';
     $('accessPapel').innerHTML=Object.entries(PAPEIS).filter(([k])=>NIVEL[k]<nivel).map(([k,v])=>`<option value="${k}">${v}</option>`).join('');
     $('accessPapel').value=nivel>=3?'head':'designer';
-    $('cardCliente').hidden=true; $('cardMes').hidden=true; $('accessCard').hidden=true; $('cardSenha').hidden=!(recuperando||obrigatorio);
+    $('cardCliente').hidden=true; $('cardMes').hidden=true; $('accessCard').hidden=true; document.body.classList.remove('vendo-equipe'); $('btnAccess').classList.remove('active'); $('cardSenha').hidden=!(recuperando||obrigatorio);
     await loadClientes();
   }
   $('selAgencia').onchange=e=>selectAgencia(e.target.value);
@@ -167,12 +170,12 @@
     L.querySelectorAll('[data-add]').forEach(b=>b.onclick=async()=>{const u=L.querySelector(`[data-add-sel="${b.dataset.add}"]`).value;await run(sb.rpc('definir_membro_squad',{p_squad:b.dataset.add,p_usuario:u,p_dentro:true}));await accessList();});
     L.querySelectorAll('[data-del-squad]').forEach(b=>b.onclick=async()=>{
       if(b.dataset.armed!=='1'){b.dataset.armed='1';b.textContent='confirmar: clientes ficam sem squad';return;}
-      await run(sb.rpc('excluir_squad',{p_squad:b.dataset.delSquad}));await selectAgencia(agencia.id);$('accessCard').hidden=false;await accessList();
+      await run(sb.rpc('excluir_squad',{p_squad:b.dataset.delSquad}));await selectAgencia(agencia.id);verEquipe(true);await accessList();
     });
   }
   $('btnNovoSquad').onclick=async()=>{
     const nome=$('novoSquad').value.trim(); if(!nome){$('accessMsg').textContent='Dê um nome ao squad.';return;}
-    try{await run(sb.rpc('salvar_squad',{p_agencia:agencia.id,p_nome:nome}));$('novoSquad').value='';$('accessMsg').textContent='Squad criado.';await selectAgencia(agencia.id);$('accessCard').hidden=false;await accessList();}catch(e){$('accessMsg').textContent=/unique|duplicate/i.test(e.message)?'Já existe um squad com esse nome.':e.message;}
+    try{await run(sb.rpc('salvar_squad',{p_agencia:agencia.id,p_nome:nome}));$('novoSquad').value='';$('accessMsg').textContent='Squad criado.';await selectAgencia(agencia.id);verEquipe(true);await accessList();}catch(e){$('accessMsg').textContent=/unique|duplicate/i.test(e.message)?'Já existe um squad com esse nome.':e.message;}
   };
   const PAPEL_TEXTO={'head':'head','designer':'designer','editor de video':'editor_video','editor de vídeo':'editor_video','editor':'editor_video','editor_video':'editor_video','gestor de trafego':'gestor_trafego','gestor de tráfego':'gestor_trafego','gestor':'gestor_trafego','gestora':'gestor_trafego','gestora de tráfego':'gestor_trafego','gestor_trafego':'gestor_trafego','social media':'social_media','social_media':'social_media','socio':'socio','sócio':'socio','dono':'dono'};
   async function chamarAcessos(corpo){
@@ -204,7 +207,14 @@
     $('loteMsg').textContent=out.join('\n\n')+'\n\nEnvie cada código só para a própria pessoa. Os códigos não aparecem de novo; se perder, use "novo código" na lista.';
     await accessList();
   };
-  $('btnAccess').onclick=async()=>{$('accessCard').hidden=!$('accessCard').hidden;if(!$('accessCard').hidden) await accessList();};
+  function verEquipe(abrir){
+    $('accessCard').hidden=!abrir;
+    document.body.classList.toggle('vendo-equipe',abrir);
+    $('btnAccess').classList.toggle('active',abrir);
+    if(abrir)scrollTo({top:0,behavior:'smooth'});
+  }
+  $('btnAccess').onclick=async()=>{const abrir=$('accessCard').hidden;verEquipe(abrir);if(abrir) await accessList();};
+  $('btnFecharEquipe').onclick=()=>verEquipe(false);
   $('grantAccess').onclick=async()=>{try{await run(sb.rpc('autorizar_acesso',{p_agencia:agencia.id,p_email:$('accessEmail').value.trim(),p_papel:$('accessPapel').value,p_nome:$('accessNome').value.trim()||null,p_squad:$('accessSquad').value||null}));$('accessMsg').textContent='Acesso autorizado.';await accessList();}catch(e){$('accessMsg').textContent=e.message;}};
   const instrucao=(nome,email,codigo)=>`${nome||email}: código ${codigo} (vale 7 dias). Envie para a pessoa: acesse ${new URL('./',location.href).href}, clique em Primeiro acesso, use o e-mail ${email} e o código ${codigo}.`;
   $('createAccess').onclick=async()=>{
@@ -264,8 +274,11 @@
     const base = new URL('c',location.href).href;
     $('linkCliente').textContent = cliente && cliente.token ? `${base}#t=${cliente.token}${mes ? '&m=' + mes.ano_mes : ''}` : '—';
     const ap = posts.filter(p => p.status === 'aprovado').length, aj = posts.filter(p => p.status === 'ajuste').length;
-    $('summary').innerHTML = `<div><b>${posts.length}</b><span>posts</span></div><div><b>${ap}</b><span>aprov.</span></div><div><b>${aj}</b><span>ajustes</span></div>`;
+    const pend = posts.filter(p => p.status === 'pendente').length;
+    $('summary').innerHTML = `<div><b>${posts.length}</b><span>posts no mês</span></div><div><b>${pend}</b><span>aguardando</span></div><div><b>${ap}</b><span>aprovados</span></div><div><b>${aj}</b><span>ajustes</span></div>`;
     $('cardPost').hidden = !mes;
+    $('cardLink').hidden = nivel < 2 || !cliente;
+    $('summary').hidden = !mes;
   }
   $('chkPub').onchange = async e => {
     if (!mes) return;
@@ -425,7 +438,7 @@
           <button data-up="${p.id}">↑</button><button data-down="${p.id}">↓</button>
           ${nivel >= 2 ? `<button data-del="${p.id}">excluir</button>` : ''}
         </td></tr>`;
-    }).join('') || '<tr><td colspan="7" style="color:var(--mute)">Nenhum post ainda.</td></tr>';
+    }).join('') || `<tr class="empty-row"><td colspan="7">${mes ? 'Nenhum post neste filtro ainda.' : cliente ? 'Crie um mês para começar a subir posts.' : 'Escolha ou crie um cliente para começar.'}</td></tr>`;
 
     $('lista').querySelectorAll('[data-edit]').forEach(b => b.onclick = () => editPost(b.dataset.edit));
     $('lista').querySelectorAll('[data-del]').forEach(b => b.onclick = async () => {

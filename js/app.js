@@ -91,7 +91,7 @@
         <span class="badge">${p.numero}</span>
         <span class="kind">${I[p.tipo] || I.image}</span>
         ${p.status !== 'pendente' ? `<span class="st ${esc(p.status)}">${STATUS[p.status]}</span>` : ''}
-        <span class="ver"><span>Ver</span></span>
+        <span class="ver"><span>Ver post</span></span>
       </button>`).join('');
   }
 
@@ -115,8 +115,8 @@
         <textarea id="comment" rows="3" placeholder="Comentário ou o que precisa ajustar (obrigatório para pedir ajuste)"></textarea>
         <input id="author" placeholder="Seu nome" value="${esc(name)}">
         <div class="actions">
-          <button class="btn primary" id="btnOk">Aprovar</button>
-          <button class="btn" id="btnAdj">Solicitar ajuste</button>
+          <button class="btn success" id="btnOk">Aprovar</button>
+          <button class="btn warn" id="btnAdj">Pedir ajuste</button>
           <button class="btn ghost" id="btnCom">Só comentar</button>
         </div>
         <div class="msg" id="msg"></div>

@@ -6,121 +6,184 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Vistto</title>
 <link rel="icon" href="assets/vistto.svg" type="image/svg+xml">
-<link href="https://fonts.googleapis.com/css2?family=Jost:wght@400;500&family=Cormorant+Garamond:wght@500&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/style.css?v=20260916g"><link rel="stylesheet" href="css/agencies.css?v=20260916g">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Cormorant+Garamond:wght@500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/style.css?v=20260917b"><link rel="stylesheet" href="css/agencies.css?v=20260917b">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="js/config.js?v=20260916g"></script>
+<script src="js/config.js?v=20260917b"></script>
 </head>
 <body class="admin" data-tema="neutro"><script>if (new URLSearchParams(location.search).has("t") || new URLSearchParams(location.hash.slice(1)).has("t")) location.replace("c" + location.search + location.hash);</script>
 
 <!-- LOGIN -->
 <div id="login" class="login" hidden>
-  <div class="brandmark"><img src="assets/vistto.svg" alt=""><div class="label">Aprovação de conteúdo</div></div><h1>Vistto<span>.</span></h1><p class="loginIntro">Organize, revise e aprove cada publicação com seus clientes.</p>
-  <div class="label" style="margin-bottom:14px">Entrar no painel</div>
-  <input id="email" type="email" placeholder="E-mail" autocomplete="username">
-  <input id="pass" type="password" placeholder="Senha" autocomplete="current-password">
-  <button class="btn primary" id="btnLogin" style="width:100%">Entrar</button>
-  <button class="btn ghost" id="btnEsqueci">Esqueci minha senha</button>
-  <button class="btn" id="btnPrimeiro">Primeiro acesso</button>
+  <div class="brandmark"><img src="assets/vistto.svg" alt=""><b>Vistto</b></div>
+  <h1>Entrar no painel</h1>
+  <p class="loginIntro">Organize, revise e aprove cada publicação com seus clientes.</p>
+  <div class="field"><label class="label" for="email">E-mail</label><input id="email" type="email" placeholder="voce@agencia.com" autocomplete="username"></div>
+  <div class="field"><label class="label" for="pass">Senha</label><input id="pass" type="password" placeholder="Sua senha" autocomplete="current-password"></div>
+  <button class="btn primary block" id="btnLogin">Entrar</button>
+  <button class="btn text" id="btnEsqueci">Esqueci minha senha</button>
+  <div class="or">primeira vez aqui?</div>
+  <button class="btn block" id="btnPrimeiro">Tenho um código de primeiro acesso</button>
   <div id="primeiroBox" hidden>
-    <p class="loginHelp">Digite seu e-mail acima, o código de 6 números que você recebeu e crie sua senha.</p>
-    <input id="primeiroCodigo" inputmode="numeric" maxlength="6" autocomplete="one-time-code" placeholder="Código de 6 números">
-    <input id="primeiroSenha" type="password" autocomplete="new-password" placeholder="Crie sua senha (mínimo 8 caracteres)">
-    <input id="primeiroSenha2" type="password" autocomplete="new-password" placeholder="Repita a senha">
-    <button class="btn primary" id="btnPrimeiroSalvar" style="width:100%">Criar senha e entrar</button>
+    <p class="loginHelp">Use o e-mail acima, o código de 6 números que você recebeu e crie sua senha.</p>
+    <div class="field"><label class="label" for="primeiroCodigo">Código</label><input id="primeiroCodigo" inputmode="numeric" maxlength="6" autocomplete="one-time-code" placeholder="000000"></div>
+    <div class="field"><label class="label" for="primeiroSenha">Nova senha</label><input id="primeiroSenha" type="password" autocomplete="new-password" placeholder="Mínimo 8 caracteres"></div>
+    <div class="field"><label class="label" for="primeiroSenha2">Repita a senha</label><input id="primeiroSenha2" type="password" autocomplete="new-password" placeholder="Digite de novo"></div>
+    <button class="btn primary block" id="btnPrimeiroSalvar">Criar senha e entrar</button>
   </div>
-  <p class="loginHelp">Seu login é criado pelo responsável da sua equipe.</p><div class="msg" id="loginMsg" role="status"></div>
+  <div class="msg" id="loginMsg" role="status"></div>
+  <p class="loginHelp">Seu login é criado pelo responsável da sua equipe.</p>
 </div>
 
 <!-- APP -->
 <div id="app" class="app" hidden>
   <aside class="sidebar">
-    <div class="agency"><div><div class="logo" id="agencyLogo"></div><div class="label">Painel</div></div></div>
-    <div class="client"><div id="boxAgencia" hidden><label for="selAgencia" class="label">Agência</label><select id="selAgencia"></select></div><div class="papel" id="meuPapel"></div><button class="btn ghost" id="btnAccess" hidden>Gerenciar equipe</button>
-      <div class="label">Cliente</div>
-      <select id="selCliente" style="margin-top:8px"></select>
-      <button class="btn ghost" id="btnNovoCliente" style="padding-left:0" hidden>+ novo cliente</button>
-      <div class="label" style="margin-top:18px">Mês</div>
-      <select id="selMes" style="margin-top:8px"></select>
-      <button class="btn ghost" id="btnNovoMes" style="padding-left:0">+ novo mês</button>
-      <div class="summary" id="summary"></div>
+    <div class="agency"><div><div class="logo" id="agencyLogo"></div><span class="label">Painel de aprovação</span></div></div>
+
+    <div class="side-section" id="boxAgencia" hidden>
+      <label for="selAgencia" class="label">Agência</label>
+      <select id="selAgencia"></select>
     </div>
-    <div class="card" id="cardLink" style="margin-top:24px;padding:14px" hidden>
-      <div class="switch"><input type="checkbox" id="chkPub"><label for="chkPub">Publicado para o cliente</label></div>
-      <div class="label" style="margin-top:12px">Link do cliente</div>
-      <div class="link" id="linkCliente">—</div>
-      <button class="btn ghost" id="btnRotate">Invalidar link antigo e gerar outro</button><button class="btn ghost" id="btnCopy" style="padding-left:0;margin-top:4px">copiar link</button>
+
+    <div class="side-section">
+      <div class="row"><label for="selCliente" class="label">Cliente</label><button class="add" id="btnNovoCliente" hidden><svg class="i" viewBox="0 0 16 16"><path d="M8 3v10M3 8h10"/></svg>Novo</button></div>
+      <select id="selCliente"></select>
     </div>
-    <p class="foot"><button class="btn ghost" id="btnMinhaSenha" style="padding:0;margin-right:14px">trocar minha senha</button><button class="btn ghost" id="btnLogout" style="padding:0">sair</button></p>
+
+    <div class="side-section">
+      <div class="row"><label for="selMes" class="label">Mês</label><button class="add" id="btnNovoMes"><svg class="i" viewBox="0 0 16 16"><path d="M8 3v10M3 8h10"/></svg>Novo</button></div>
+      <select id="selMes"></select>
+    </div>
+
+    <div class="side-section">
+      <button class="nav-item" id="btnAccess" hidden><svg class="i" viewBox="0 0 16 16"><circle cx="6" cy="5.5" r="2.5"/><path d="M1.5 13.5c.6-2.3 2.3-3.5 4.5-3.5s3.9 1.2 4.5 3.5M11 3.2a2.5 2.5 0 0 1 0 4.6M12.5 10.3c1 .5 1.7 1.6 2 3.2"/></svg>Gerenciar equipe</button>
+    </div>
+
+    <div class="side-foot">
+      <div class="user-chip"><span class="avatar"><svg class="i" viewBox="0 0 16 16"><circle cx="8" cy="5.5" r="3"/><path d="M2.5 14c.8-2.6 2.9-4 5.5-4s4.7 1.4 5.5 4"/></svg></span><div><span class="papel" id="meuPapel"></span><small>Conectado</small></div></div>
+      <button class="nav-item" id="btnMinhaSenha"><svg class="i" viewBox="0 0 16 16"><rect x="3" y="7" width="10" height="7" rx="1.5"/><path d="M5.5 7V5a2.5 2.5 0 0 1 5 0v2"/></svg>Trocar minha senha</button>
+      <button class="nav-item" id="btnLogout"><svg class="i" viewBox="0 0 16 16"><path d="M6 14H3.5A1.5 1.5 0 0 1 2 12.5v-9A1.5 1.5 0 0 1 3.5 2H6M10.5 11 14 8l-3.5-3M14 8H6"/></svg>Sair</button>
+    </div>
   </aside>
 
   <main class="main">
     <div class="wrap">
-      <div class="label">Aprovação de conteúdo</div>
-      <h2 id="titulo">—</h2><div class="actions"><button class="btn" id="btnRefresh">Atualizar aprovações</button><select id="filterStatus" aria-label="Filtrar posts"><option value="">Todos os status</option><option value="pendente">Aguardando</option><option value="ajuste">Ajustes solicitados</option><option value="aprovado">Aprovados</option></select></div><div class="card" id="cardSenha" hidden><h4>Minha senha</h4><p id="senhaIntro">Escolha uma nova senha com pelo menos 8 caracteres.</p><div class="grid2"><input id="novaSenha" type="password" autocomplete="new-password" placeholder="Nova senha"><input id="novaSenha2" type="password" autocomplete="new-password" placeholder="Repita a nova senha"></div><div class="actions"><button class="btn primary" id="btnSalvarSenha">Salvar nova senha</button><button class="btn ghost" id="btnFecharSenha">fechar</button></div><div class="msg" id="msgSenha" role="status"></div></div><div class="card" id="accessCard" hidden><h4>Equipe da agência</h4><p>Cadastre alguém da equipe e escolha o papel e o squad. O sistema gera um código de 6 números: a pessoa entra em <b>Primeiro acesso</b> com o e-mail e esse código e cria a própria senha. Você só cadastra papéis abaixo do seu.</p><div class="grid2"><input id="accessNome" maxlength="80" placeholder="Nome (opcional)"><input id="accessEmail" type="email" placeholder="E-mail da pessoa"><select id="accessPapel" aria-label="Papel"></select><select id="accessSquad" aria-label="Squad"></select></div><div class="actions"><button class="btn primary" id="createAccess">Cadastrar e gerar código</button><button class="btn" id="grantAccess">Autorizar conta existente</button></div><div class="msg" id="accessMsg" role="status"></div><details id="loteBox"><summary>Cadastro em lote</summary><p>Uma pessoa por linha, no formato <b>Nome; e-mail; papel; squad</b>. Papéis: head, designer, editor de vídeo, gestor de tráfego, social media. Cada pessoa recebe o próprio código de primeiro acesso.</p><textarea id="loteLinhas" rows="6" placeholder="Maria Silva; maria@email.com; designer; Squad Exemplo"></textarea><div class="actions"><button class="btn primary" id="btnLote">Cadastrar todos e gerar códigos</button></div><div class="msg" id="loteMsg" role="status"></div></details><div id="accessList"></div><div id="squadsBox" hidden><h4 style="margin-top:22px">Squads</h4><p>Head e equipe só veem os clientes dos squads em que estão. Donos e sócios veem todos.</p><div class="addMembro"><input id="novoSquad" maxlength="80" placeholder="Nome do novo squad"><button class="btn" id="btnNovoSquad">criar squad</button></div><div id="squadsList"></div></div></div>
+      <div class="page-head">
+        <div><span class="eyebrow">Aprovação de conteúdo</span><h2 id="titulo">—</h2></div>
+        <div class="actions">
+          <select id="filterStatus" aria-label="Filtrar posts"><option value="">Todos os status</option><option value="pendente">Aguardando</option><option value="ajuste">Ajustes solicitados</option><option value="aprovado">Aprovados</option></select>
+          <button class="btn" id="btnRefresh"><svg class="i" viewBox="0 0 16 16"><path d="M13.5 8a5.5 5.5 0 1 1-1.6-3.9M13.5 2.5v3h-3"/></svg>Atualizar aprovações</button>
+        </div>
+      </div>
+
+      <!-- SENHA -->
+      <div class="card" id="cardSenha" hidden>
+        <div class="card-head"><div><h4>Minha senha</h4><p id="senhaIntro">Escolha uma nova senha com pelo menos 8 caracteres.</p></div></div>
+        <div class="form-grid">
+          <div class="field"><label class="label" for="novaSenha">Nova senha</label><input id="novaSenha" type="password" autocomplete="new-password" placeholder="Mínimo 8 caracteres"></div>
+          <div class="field"><label class="label" for="novaSenha2">Repita a nova senha</label><input id="novaSenha2" type="password" autocomplete="new-password" placeholder="Digite de novo"></div>
+        </div>
+        <div class="actions"><button class="btn primary" id="btnSalvarSenha">Salvar nova senha</button><button class="btn ghost" id="btnFecharSenha">Cancelar</button></div>
+        <div class="msg" id="msgSenha" role="status"></div>
+      </div>
+
+      <!-- EQUIPE -->
+      <div class="card" id="accessCard" hidden>
+        <div class="card-head"><div><h4>Equipe da agência</h4><p>Cadastre alguém, escolha o papel e o squad. O sistema gera um código de 6 números: a pessoa entra em <b>Primeiro acesso</b> com o e-mail e o código e cria a própria senha. Você só cadastra papéis abaixo do seu.</p></div><button class="btn sm" id="btnFecharEquipe">Voltar aos posts</button></div>
+        <div class="form-grid">
+          <div class="field"><label class="label" for="accessNome">Nome</label><input id="accessNome" maxlength="80" placeholder="Opcional"></div>
+          <div class="field"><label class="label" for="accessEmail">E-mail</label><input id="accessEmail" type="email" placeholder="pessoa@email.com"></div>
+          <div class="field"><label class="label" for="accessPapel">Papel</label><select id="accessPapel"></select></div>
+          <div class="field"><label class="label" for="accessSquad">Squad</label><select id="accessSquad"></select></div>
+        </div>
+        <div class="actions"><button class="btn primary" id="createAccess">Cadastrar e gerar código</button><button class="btn" id="grantAccess">Autorizar conta existente</button></div>
+        <div class="msg" id="accessMsg" role="status"></div>
+        <details id="loteBox"><summary>Cadastro em lote</summary><p>Uma pessoa por linha, no formato <b>Nome; e-mail; papel; squad</b>. Papéis: head, designer, editor de vídeo, gestor de tráfego, social media. Cada pessoa recebe o próprio código de primeiro acesso.</p><textarea id="loteLinhas" rows="6" placeholder="Maria Silva; maria@email.com; designer; Squad Exemplo"></textarea><div class="actions"><button class="btn primary" id="btnLote">Cadastrar todos e gerar códigos</button></div><div class="msg" id="loteMsg" role="status"></div></details>
+        <div class="section-title">Pessoas</div>
+        <div id="accessList"></div>
+        <div id="squadsBox" hidden>
+          <hr class="divider">
+          <div class="card-head"><div><h4>Squads</h4><p>Head e equipe só veem os clientes dos squads em que estão. Donos e sócios veem todos.</p></div></div>
+          <div class="addMembro"><input id="novoSquad" maxlength="80" placeholder="Nome do novo squad"><button class="btn" id="btnNovoSquad">Criar squad</button></div>
+          <div id="squadsList"></div>
+        </div>
+      </div>
 
       <!-- CLIENTE -->
       <div class="card" id="cardCliente" hidden>
-        <h4>Dados do cliente</h4>
-        <div class="grid2">
-          <input id="cNome" placeholder="Nome do cliente">
-          <input id="cSlug" placeholder="Identificador do cliente">
-          <input id="cHandle" placeholder="@handle">
-          <input id="cAvatar" readonly placeholder="Foto de perfil (envie abaixo)">
-          <select id="cSquad" aria-label="Squad do cliente"></select>
+        <div class="card-head"><div><h4>Dados do cliente</h4><p>Como o perfil vai aparecer na prévia do feed.</p></div></div>
+        <div class="form-grid">
+          <div class="field"><label class="label" for="cNome">Nome do cliente</label><input id="cNome" placeholder="Ex.: Padaria Aurora"></div>
+          <div class="field"><label class="label" for="cSlug">Identificador</label><input id="cSlug" placeholder="padaria-aurora"></div>
+          <div class="field"><label class="label" for="cHandle">Instagram</label><input id="cHandle" placeholder="@perfil"></div>
+          <div class="field"><label class="label" for="cSquad">Squad</label><select id="cSquad"></select></div>
+          <div class="field full"><label class="label" for="cBio">Bio</label><textarea id="cBio" rows="2" placeholder="Texto que aparece abaixo do nome"></textarea></div>
+          <div class="field full"><label class="label" for="cAvatar">Foto de perfil</label><input id="cAvatar" readonly placeholder="Envie abaixo"><div class="drop" id="dropAvatar">Enviar foto de perfil</div></div>
+          <div class="field full"><span class="label">Destaques (capas 9:16)</span><div class="thumbs" id="thumbsDest"></div><div class="drop" id="dropDest">Arraste as capas aqui. O nome do arquivo vira o nome do destaque.</div></div>
         </div>
-        <textarea id="cBio" rows="2" placeholder="Bio"></textarea>
-        <div class="drop" id="dropAvatar">Enviar foto de perfil</div>
-        <h4 style="margin-top:14px">Destaques (capas 9:16)</h4>
-        <div class="thumbs" id="thumbsDest"></div>
-        <div class="drop" id="dropDest">Arraste as capas de destaque aqui (o nome do arquivo vira o nome do destaque)</div>
-        <div class="actions"><button class="btn primary" id="btnSalvarCliente">Salvar cliente</button><button class="btn ghost" id="btnFecharCliente">fechar</button></div>
+        <div class="actions"><button class="btn primary" id="btnSalvarCliente">Salvar cliente</button><button class="btn ghost" id="btnFecharCliente">Cancelar</button></div>
         <div class="msg" id="msgCliente"></div>
       </div>
 
       <!-- MÊS -->
       <div class="card" id="cardMes" hidden>
-        <h4>Mês</h4>
-        <div class="grid2">
-          <input id="mAnoMes" placeholder="2026-10">
-          <input id="mTitulo" placeholder="Outubro 2026">
+        <div class="card-head"><div><h4>Novo mês</h4><p>Cada mês reúne os posts que o cliente vai aprovar.</p></div></div>
+        <div class="form-grid">
+          <div class="field"><label class="label" for="mAnoMes">Ano e mês</label><input id="mAnoMes" placeholder="2026-10"></div>
+          <div class="field"><label class="label" for="mTitulo">Título</label><input id="mTitulo" placeholder="Outubro 2026"></div>
+          <div class="field full"><label class="label" for="mIntro">Introdução <span class="hint">(opcional)</span></label><textarea id="mIntro" rows="2" placeholder="Mensagem que aparece no topo da prévia"></textarea></div>
         </div>
-        <textarea id="mIntro" rows="2" placeholder="Texto de introdução (opcional)"></textarea>
-        <div class="actions"><button class="btn primary" id="btnSalvarMes">Salvar mês</button><button class="btn ghost" id="btnFecharMes">fechar</button></div>
+        <div class="actions"><button class="btn primary" id="btnSalvarMes">Salvar mês</button><button class="btn ghost" id="btnFecharMes">Cancelar</button></div>
         <div class="msg" id="msgMes"></div>
       </div>
 
-      <!-- NOVO POST -->
-      <div class="card" id="cardPost">
-        <h4 id="postFormTitle">Novo post</h4>
-        <div class="grid2">
-          <input id="pNumero" placeholder="Número (01)">
-          <input id="pData" placeholder="Data prevista (09/10)">
-          <input id="pTema" placeholder="Tema curto (Design · confiança)">
-          <select id="pTipo"><option value="carousel">Carrossel</option><option value="image">Imagem única</option><option value="reel">Reel (vídeo)</option></select>
+      <div class="summary" id="summary"></div>
+
+      <!-- PUBLICAÇÃO -->
+      <div class="card" id="cardLink" hidden>
+        <div class="publish">
+          <label class="switch"><input type="checkbox" id="chkPub">Publicado para o cliente</label>
+          <div class="link" id="linkCliente" title="Link do cliente">—</div>
+          <div class="actions">
+            <button class="btn primary sm" id="btnCopy">copiar link</button>
+            <button class="btn ghost sm" id="btnRotate">Gerar novo link</button>
+          </div>
         </div>
-        <input id="pTitulo" placeholder="Título (use <em>palavra</em> para grifar)">
-        <textarea id="pLegenda" rows="5" placeholder="Legenda completa"></textarea>
-        <div class="thumbs" id="thumbs"></div>
-        <div class="drop" id="drop">Arraste as lâminas aqui (ou clique) — na ordem do carrossel. Para reel, arraste o .mp4 e uma capa.</div>
+      </div>
+
+      <!-- POST -->
+      <div class="card" id="cardPost">
+        <div class="card-head"><div><h4 id="postFormTitle">Novo post</h4><p>Envie as lâminas na ordem do carrossel. Para reel, envie o .mp4 e uma imagem de capa.</p></div></div>
+        <div class="form-grid">
+          <div class="field"><label class="label" for="pNumero">Número</label><input id="pNumero" placeholder="01"></div>
+          <div class="field"><label class="label" for="pData">Data prevista</label><input id="pData" placeholder="09/10"></div>
+          <div class="field"><label class="label" for="pTema">Tema</label><input id="pTema" placeholder="Design · confiança"></div>
+          <div class="field"><label class="label" for="pTipo">Formato</label><select id="pTipo"><option value="carousel">Carrossel</option><option value="image">Imagem única</option><option value="reel">Reel (vídeo)</option></select></div>
+          <div class="field full"><label class="label" for="pTitulo">Título <span class="hint">(use &lt;em&gt;palavra&lt;/em&gt; para destacar)</span></label><input id="pTitulo" placeholder="Título do post"></div>
+          <div class="field full"><label class="label" for="pLegenda">Legenda</label><textarea id="pLegenda" rows="5" placeholder="Legenda completa"></textarea></div>
+          <div class="field full"><span class="label">Arquivos</span><div class="thumbs" id="thumbs"></div><div class="drop" id="drop"><span><b>Clique para enviar</b> ou arraste aqui</span><span class="hint">JPG, PNG, WebP, GIF ou MP4 · até 50 MB</span></div></div>
+        </div>
         <input type="file" id="file" multiple accept="image/*,video/mp4" hidden>
         <div class="actions">
           <button class="btn primary" id="btnSalvarPost">Salvar post</button>
-          <button class="btn ghost" id="btnLimpar">limpar</button>
+          <button class="btn ghost" id="btnLimpar">Limpar</button>
         </div>
         <div class="msg" id="msgPost"></div>
       </div>
 
       <!-- LISTA -->
-      <div class="card">
-        <h4>Posts do mês</h4>
-        <table><thead><tr><th></th><th>#</th><th>Tema</th><th>Tipo</th><th>Status</th><th>Retorno do cliente</th><th></th></tr></thead>
-        <tbody id="lista"></tbody></table>
+      <div class="card lista-card">
+        <div class="card-head"><div><h4>Posts do mês</h4><p>Retornos do cliente aparecem aqui. Use “Atualizar aprovações” para ver as novidades.</p></div></div>
+        <div class="table-wrap">
+          <table><thead><tr><th></th><th>#</th><th>Tema</th><th>Formato</th><th>Status</th><th>Retorno do cliente</th><th>Ações</th></tr></thead>
+          <tbody id="lista"></tbody></table>
+        </div>
       </div>
     </div>
   </main>
 </div>
 
-<script src="js/brand.js?v=20260916g"></script><script src="js/media.js?v=20260916g"></script><script src="js/admin.js?v=20260916g"></script>
+<script src="js/brand.js?v=20260917b"></script><script src="js/media.js?v=20260917b"></script><script src="js/admin.js?v=20260917b"></script>
 </body>
 </html>
