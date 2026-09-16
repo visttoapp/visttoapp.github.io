@@ -291,6 +291,7 @@
   function renderTop() {
     $('titulo').textContent = cliente ? `${cliente.nome}${mes ? ' · ' + mes.titulo : ''}` : (nivel >= 2 ? 'Comece criando um cliente' : 'Nenhum cliente liberado');
     $('btnNovoMes').hidden = !cliente;
+    $('btnEditarCliente').hidden = !cliente || nivel < 2;
     $('btnExcluirMes').hidden = !mes || nivel < 2;
     $('chkPub').checked = !!(mes && mes.publicado);
     $('chkPub').disabled = !mes || nivel < 2;
@@ -320,7 +321,22 @@
     $('cSquad').value = c ? c.squad_id || '' : (nivel >= 3 ? '' : (squads[0]?.id || ''));
     destFiles = []; renderDest(); $('msgCliente').textContent = '';
     $('cardCliente').dataset.id = c ? c.id : '';
+    $('btnExcluirCliente').hidden = !c || nivel < 2;
   }
+  $('btnExcluirCliente').onclick = async () => {
+    const c = clientes.find(x => x.id === $('cardCliente').dataset.id);
+    if (!c || nivel < 2) return;
+    const nMeses = c.id === cliente?.id ? meses.length : null;
+    const aviso = nMeses === null ? 'todos os meses e posts dele' : nMeses ? `${nMeses > 1 ? `os ${nMeses} meses` : 'o mês'} e todos os posts dele` : 'o cadastro dele';
+    const digitado = prompt(`Isso apaga ${c.nome}, ${aviso} e o link do cliente para sempre. Não dá para desfazer.\n\nPara confirmar, digite o nome do cliente:`);
+    if (digitado === null) return;
+    if (digitado.trim().toLowerCase() !== c.nome.trim().toLowerCase()) return alert('O nome não confere. Nada foi excluído.');
+    const { data, error } = await sb.from('clientes').delete().eq('id', c.id).select('id');
+    if (error || !data?.length) return alert(error?.message || 'Você não tem permissão para excluir este cliente.');
+    localStorage.removeItem('adm_cliente_' + agencia.id);
+    $('cardCliente').hidden = true;
+    await loadClientes();
+  };
   $('btnSalvarCliente').onclick = async () => {
     const id = $('cardCliente').dataset.id;
     const row = { agencia_id: agencia.id, nome: $('cNome').value.trim(), slug: $('cSlug').value.trim().toLowerCase().replace(/[^a-z0-9-]/g, '-'), handle: $('cHandle').value.trim(), avatar_url: $('cAvatar').value.trim() || null, bio: $('cBio').value.trim(), squad_id: $('cSquad').value || null };
@@ -338,6 +354,7 @@
     $('cardCliente').hidden = true;
     await loadClientes();
   };
+  $('btnEditarCliente').onclick = () => $('titulo').onclick();
   $('titulo').onclick = () => { if (cliente && nivel >= 2) { fillCliente(cliente); $('cardCliente').hidden = false; } };
 
   dropzone($('dropAvatar'), async fl => {

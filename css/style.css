@@ -232,8 +232,9 @@ td:nth-child(3){min-width:160px}
 #accessList [data-revoke]{color:var(--danger)}
 #accessList [data-revoke]:hover{background:var(--danger-soft)}
 #accessList p{color:var(--text-2)}
-#btnExcluirMes{color:var(--danger)}
-#btnExcluirMes:hover{background:var(--danger-soft)}
+#btnExcluirMes,#btnExcluirCliente{color:var(--danger)}
+#btnExcluirMes:hover,#btnExcluirCliente:hover{background:var(--danger-soft)}
+#btnExcluirCliente{margin-left:auto}
 #accessList small.alerta{color:var(--warning)}
 #accessList [data-clientes].active{background:var(--brand);border-color:var(--brand);color:var(--on-brand)}
 .gestor-clientes{flex:1 1 100%;margin-top:4px;padding:14px 16px;border:1px solid var(--border);border-radius:var(--r-lg);background:var(--surface-2)}

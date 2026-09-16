@@ -8,9 +8,9 @@
 <link rel="icon" href="assets/vistto.svg" type="image/svg+xml">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Cormorant+Garamond:wght@500&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/style.css?v=20260917d"><link rel="stylesheet" href="css/agencies.css?v=20260917d">
+<link rel="stylesheet" href="css/style.css?v=20260917e"><link rel="stylesheet" href="css/agencies.css?v=20260917e">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="js/config.js?v=20260917d"></script>
+<script src="js/config.js?v=20260917e"></script>
 </head>
 <body class="admin" data-tema="neutro"><script>if (new URLSearchParams(location.search).has("t") || new URLSearchParams(location.hash.slice(1)).has("t")) location.replace("c" + location.search + location.hash);</script>
 
@@ -73,6 +73,7 @@
         <div><span class="eyebrow">Aprovação de conteúdo</span><h2 id="titulo">—</h2></div>
         <div class="actions">
           <select id="filterStatus" aria-label="Filtrar posts"><option value="">Todos os status</option><option value="pendente">Aguardando</option><option value="ajuste">Ajustes solicitados</option><option value="aprovado">Aprovados</option></select>
+          <button class="btn" id="btnEditarCliente" hidden><svg class="i" viewBox="0 0 16 16"><path d="M11 2.5l2.5 2.5L5.5 13H3v-2.5z"/></svg>Editar cliente</button>
           <button class="btn" id="btnRefresh"><svg class="i" viewBox="0 0 16 16"><path d="M13.5 8a5.5 5.5 0 1 1-1.6-3.9M13.5 2.5v3h-3"/></svg>Atualizar aprovações</button>
         </div>
       </div>
@@ -122,7 +123,7 @@
           <div class="field full"><label class="label" for="cAvatar">Foto de perfil</label><input id="cAvatar" readonly placeholder="Envie abaixo"><div class="drop" id="dropAvatar">Enviar foto de perfil</div></div>
           <div class="field full"><span class="label">Destaques (capas 9:16)</span><div class="thumbs" id="thumbsDest"></div><div class="drop" id="dropDest">Arraste as capas aqui. O nome do arquivo vira o nome do destaque.</div></div>
         </div>
-        <div class="actions"><button class="btn primary" id="btnSalvarCliente">Salvar cliente</button><button class="btn ghost" id="btnFecharCliente">Cancelar</button></div>
+        <div class="actions"><button class="btn primary" id="btnSalvarCliente">Salvar cliente</button><button class="btn ghost" id="btnFecharCliente">Cancelar</button><button class="btn ghost" id="btnExcluirCliente" hidden>Excluir cliente</button></div>
         <div class="msg" id="msgCliente"></div>
       </div>
 
@@ -185,6 +186,6 @@
   </main>
 </div>
 
-<script src="js/brand.js?v=20260917d"></script><script src="js/media.js?v=20260917d"></script><script src="js/admin.js?v=20260917d"></script>
+<script src="js/brand.js?v=20260917e"></script><script src="js/media.js?v=20260917e"></script><script src="js/admin.js?v=20260917e"></script>
 </body>
 </html>
