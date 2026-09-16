@@ -27,7 +27,7 @@ body[data-tema="escuro"] .link,body[data-tema="escuro"] .drop:hover{background:#
 #accessList .membro span{flex:1 1 220px;min-width:0;overflow-wrap:anywhere}#accessList .membro small{color:var(--mute)}#accessList select{max-width:190px}
 .papel{display:inline-block;font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--mute);margin-top:2px}
 .resetBox{display:flex;flex-wrap:wrap;gap:8px;width:100%}.resetBox input{flex:1 1 220px;margin:0}
-#btnEsqueci{width:100%;margin-top:6px}
+#btnEsqueci,#btnPrimeiro{width:100%;margin-top:6px}
 .squad{border-top:1px solid var(--line);padding:12px 0}.squadHead{display:flex;flex-wrap:wrap;align-items:center;gap:10px}.squadHead small{color:var(--mute)}
 .chips{display:flex;flex-wrap:wrap;gap:6px;margin:8px 0}.chip{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line);border-radius:99px;padding:4px 6px 4px 12px;font-size:13px}
 .chip small{color:var(--mute)}.chip button{border:0;background:none;color:var(--mute);cursor:pointer;font-size:15px;line-height:1}
