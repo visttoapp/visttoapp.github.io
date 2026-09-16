@@ -121,7 +121,7 @@ select:disabled,input:disabled{opacity:.6;cursor:not-allowed}
 .pill.ajuste{background:var(--warning-soft);border-color:var(--warning-border);color:var(--warning)}
 
 /* cartões */
-.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r-lg);box-shadow:var(--shadow-soft);padding:20px;margin-bottom:16px}
+.card{scroll-margin-top:16px;background:var(--surface);border:1px solid var(--border);border-radius:var(--r-lg);box-shadow:var(--shadow-soft);padding:20px;margin-bottom:16px}
 .card h4{font-size:16px;line-height:24px;font-weight:600;margin-bottom:4px}
 .card>p,.card .desc{color:var(--text-2);font-size:13px;line-height:20px;margin-bottom:16px}
 .card-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:16px}

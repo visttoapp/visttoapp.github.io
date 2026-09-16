@@ -228,6 +228,7 @@
     $('loteMsg').textContent=out.join('\n\n')+'\n\nEnvie cada código só para a própria pessoa. Os códigos não aparecem de novo; se perder, use "novo código" na lista.';
     await accessList();
   };
+  function mostrar(id){ requestAnimationFrame(() => $(id).scrollIntoView({ behavior: 'smooth', block: 'start' })); }
   function verEquipe(abrir){
     $('accessCard').hidden=!abrir;
     document.body.classList.toggle('vendo-equipe',abrir);
@@ -262,7 +263,7 @@
     if (saved && clientes.find(c => c.id === saved)) $('selCliente').value = saved;
     await selectCliente($('selCliente').value);
   }
-  $('selCliente').onchange = e => selectCliente(e.target.value);
+  $('selCliente').onchange = e => { verEquipe(false); $('cardMes').hidden = true; $('cardCliente').hidden = true; selectCliente(e.target.value); };
 
   async function selectCliente(id) {
     cliente = clientes.find(c => c.id === id) || null;
@@ -275,7 +276,7 @@
     $('selMes').innerHTML = meses.map(m => `<option value="${m.id}">${esc(m.titulo)}</option>`).join('') || '<option value="">— crie um mês —</option>';
     await selectMes($('selMes').value);
   }
-  $('selMes').onchange = e => selectMes(e.target.value);
+  $('selMes').onchange = e => { verEquipe(false); selectMes(e.target.value); };
 
   async function selectMes(id) {
     mes = meses.find(m => m.id === id) || null;
@@ -313,7 +314,7 @@
   $('btnCopy').onclick = async () => { if(!cliente?.token || !mes?.publicado) return alert('Publique o mês antes de copiar o link.'); await navigator.clipboard.writeText($('linkCliente').textContent); $('btnCopy').textContent = 'copiado!'; setTimeout(() => $('btnCopy').textContent = 'copiar link', 1500); };
 
   /* ---------- cliente ---------- */
-  $('btnNovoCliente').onclick = () => { fillCliente(null); $('cardCliente').hidden = false; };
+  $('btnNovoCliente').onclick = () => { verEquipe(false); fillCliente(null); $('cardCliente').hidden = false; mostrar('cardCliente'); };
   $('btnFecharCliente').onclick = () => $('cardCliente').hidden = true;
   function fillCliente(c) {
     $('cNome').value = c ? c.nome : ''; $('cSlug').value = c ? c.slug : ''; $('cHandle').value = c ? c.handle || '' : '';
@@ -355,7 +356,7 @@
     await loadClientes();
   };
   $('btnEditarCliente').onclick = () => $('titulo').onclick();
-  $('titulo').onclick = () => { if (cliente && nivel >= 2) { fillCliente(cliente); $('cardCliente').hidden = false; } };
+  $('titulo').onclick = () => { if (cliente && nivel >= 2) { verEquipe(false); fillCliente(cliente); $('cardCliente').hidden = false; mostrar('cardCliente'); } };
 
   dropzone($('dropAvatar'), async fl => {
     const url = await upload(fl[0], `clientes/${$('cSlug').value || 'novo'}/avatar`);
@@ -375,11 +376,12 @@
 
   /* ---------- mês ---------- */
   $('btnNovoMes').onclick = () => {
+    verEquipe(false);
     if (!cliente) return alert('Crie um cliente primeiro.');
     const d = new Date(); d.setMonth(d.getMonth() + 1);
     $('mAnoMes').value = `${d.getFullYear()}-${pad(d.getMonth() + 1)}`;
     $('mTitulo').value = d.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' }).replace(/^\w/, c => c.toUpperCase()).replace(' de ', ' ');
-    $('mIntro').value = ''; $('msgMes').textContent = ''; $('cardMes').hidden = false;
+    $('mIntro').value = ''; $('msgMes').textContent = ''; $('cardMes').hidden = false; mostrar('cardMes');
   };
   $('btnFecharMes').onclick = () => $('cardMes').hidden = true;
   $('btnExcluirMes').onclick = async () => {
