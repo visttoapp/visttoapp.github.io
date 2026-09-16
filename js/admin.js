@@ -143,7 +143,7 @@
     const rows=await run(sb.rpc('listar_acessos',{p_agencia:agencia.id}));
     const opcoes=atual=>Object.entries(PAPEIS).filter(([k])=>NIVEL[k]<nivel||k===atual).map(([k,v])=>`<option value="${k}" ${k===atual?'selected':''}>${v}</option>`).join('');
     membrosAgencia=rows;
-    $('accessList').innerHTML=rows.map(r=>`<div class="membro"><span>${esc(r.nome||r.email)}${r.nome?`<br><small>${esc(r.email)}</small>`:''}${(r.squads||[]).length?`<br><small>Squad: ${r.squads.map(x=>esc(x.nome)).join(', ')}</small>`:''}${r.pendente?'<br><small>Aguardando primeiro acesso</small>':''}</span>${r.pode_gerir?`<select data-papel="${r.usuario_id}" aria-label="Papel">${opcoes(r.papel)}</select><button class="btn ghost" data-codigo="${r.usuario_id}">novo código</button><button class="btn ghost" data-revoke="${r.usuario_id}">remover</button>`:`<small>${esc(PAPEIS[r.papel]||r.papel)}</small>`}</div>`).join('')||'<p>Ninguém cadastrado nesta agência ainda.</p>';
+    $('accessList').innerHTML=rows.map(r=>`<div class="membro"><span>${esc(r.nome||r.email)}${r.nome?`<br><small>${esc(r.email)}</small>`:''}${(r.squads||[]).length?`<br><small>Squad: ${r.squads.map(x=>esc(x.nome)).join(', ')}</small>`:''}${r.pendente?'<br><small>Aguardando primeiro acesso</small>':''}${r.papel==='gestor_trafego'?`<br><small class="${r.clientes?'qtd':'alerta'}">${r.clientes?`${r.clientes} cliente${r.clientes>1?'s':''} liberado${r.clientes>1?'s':''}`:'Nenhum cliente liberado ainda'}</small>`:''}</span>${r.pode_gerir?`${r.papel==='gestor_trafego'?`<button class="btn soft" data-clientes="${r.usuario_id}" aria-expanded="false">Clientes</button>`:''}<select data-papel="${r.usuario_id}" aria-label="Papel">${opcoes(r.papel)}</select><button class="btn ghost" data-codigo="${r.usuario_id}">novo código</button><button class="btn ghost" data-revoke="${r.usuario_id}">remover</button>`:`<small>${esc(PAPEIS[r.papel]||r.papel)}</small>`}${r.papel==='gestor_trafego'&&r.pode_gerir?`<div class="gestor-clientes" id="gc-${r.usuario_id}" hidden></div>`:''}</div>`).join('')||'<p>Ninguém cadastrado nesta agência ainda.</p>';
     $('accessList').querySelectorAll('[data-revoke]').forEach(b=>b.onclick=async()=>{await run(sb.rpc('revogar_acesso',{p_agencia:agencia.id,p_usuario:b.dataset.revoke}));$('accessMsg').textContent='Acesso removido.';await accessList();});
     $('accessList').querySelectorAll('[data-codigo]').forEach(b=>b.onclick=async()=>{
       const r=rows.find(x=>x.usuario_id===b.dataset.codigo);
@@ -152,8 +152,29 @@
       try{const j=await chamarAcessos({acao:'codigo',usuario_id:r.usuario_id});$('accessMsg').textContent=instrucao(r.nome,r.email,j.codigo);await accessList();}
       catch(e){$('accessMsg').textContent=e.message;b.disabled=false;}
     });
+    $('accessList').querySelectorAll('[data-clientes]').forEach(b=>b.onclick=()=>abrirClientesGestor(b));
     $('accessList').querySelectorAll('[data-papel]').forEach(sel=>sel.onchange=async()=>{try{await run(sb.rpc('alterar_papel',{p_agencia:agencia.id,p_usuario:sel.dataset.papel,p_papel:sel.value}));$('accessMsg').textContent='Papel atualizado.';}catch(e){$('accessMsg').textContent=e.message;}await accessList();});
     await recarregarSquads();
+  }
+  async function abrirClientesGestor(b){
+    const u=b.dataset.clientes, box=$('gc-'+u), abrir=box.hidden;
+    box.hidden=!abrir; b.setAttribute('aria-expanded',abrir); b.classList.toggle('active',abrir);
+    if(!abrir) return;
+    box.innerHTML='<small>Carregando…</small>';
+    try{
+      const lista=await run(sb.rpc('clientes_do_gestor',{p_agencia:agencia.id,p_usuario:u}));
+      const pessoa=membrosAgencia.find(x=>x.usuario_id===u);
+      const nome=esc((pessoa?.nome||pessoa?.email||'').split(' ')[0]);
+      const grupos=[...new Set(lista.map(c=>c.squad||''))];
+      box.innerHTML=!lista.length?`<p class="hint">Nenhum cliente disponível. ${agencia.usa_squads?'Coloque a pessoa no squad do cliente primeiro.':'Cadastre um cliente primeiro.'}</p>`
+        :`<p class="hint">Marque os clientes de ${nome||'quem faz o tráfego'}. Só os marcados aparecem no painel dessa pessoa. Designers e editores continuam vendo os clientes do squad.</p>`
+        +grupos.map(g=>`${g&&grupos.length>1?`<span class="label">${esc(g)}</span>`:''}<div class="checks">${lista.filter(c=>(c.squad||'')===g).map(c=>`<label class="check"><input type="checkbox" data-gc="${c.id}" ${c.marcado?'checked':''}><span>${esc(c.nome)}</span></label>`).join('')}</div>`).join('')
+        +(lista.length>3?`<div class="checks-acoes"><button class="btn text sm" data-gc-todos="1">Marcar todos</button><button class="btn text sm" data-gc-todos="0">Desmarcar todos</button></div>`:'');
+      const salvar=async(inp)=>{inp.disabled=true;try{await run(sb.rpc('definir_gestor_cliente',{p_cliente:inp.dataset.gc,p_usuario:u,p_dentro:inp.checked}));}catch(e){inp.checked=!inp.checked;$('accessMsg').textContent=e.message;}finally{inp.disabled=false;}};
+      const contar=()=>{const n=box.querySelectorAll('[data-gc]:checked').length;const sm=b.closest('.membro').querySelector('small.alerta, small.qtd');if(sm){sm.className=n?'qtd':'alerta';sm.textContent=n?`${n} cliente${n>1?'s':''} liberado${n>1?'s':''}`:'Nenhum cliente liberado ainda';}};
+      box.querySelectorAll('[data-gc]').forEach(inp=>inp.onchange=async()=>{await salvar(inp);contar();});
+      box.querySelectorAll('[data-gc-todos]').forEach(t=>t.onclick=async()=>{const v=t.dataset.gcTodos==='1';for(const inp of box.querySelectorAll('[data-gc]')){if(inp.checked!==v){inp.checked=v;await salvar(inp);}}contar();});
+    }catch(e){box.innerHTML=`<p class="hint">${esc(e.message)}</p>`;}
   }
   let membrosAgencia=[];
   async function recarregarSquads(){
@@ -234,7 +255,7 @@
     const opt = c => `<option value="${c.id}">${esc(c.nome)}</option>`;
     const grupos = squads.map(q => ({ nome: q.nome, itens: clientes.filter(c => c.squad_id === q.id) })).filter(g => g.itens.length);
     const soltos = clientes.filter(c => !squads.some(q => q.id === c.squad_id));
-    $('selCliente').innerHTML = !clientes.length ? '<option value="">— crie um cliente —</option>'
+    $('selCliente').innerHTML = !clientes.length ? `<option value="">${nivel >= 2 ? '— crie um cliente —' : '— nenhum cliente liberado —'}</option>`
       : grupos.length ? grupos.map(g => `<optgroup label="${esc(g.nome)}">${g.itens.map(opt).join('')}</optgroup>`).join('') + (soltos.length ? `<optgroup label="Sem squad">${soltos.map(opt).join('')}</optgroup>` : '')
       : clientes.map(opt).join('');
     const saved = localStorage.getItem('adm_cliente_' + agencia.id);
@@ -268,7 +289,8 @@
   }
 
   function renderTop() {
-    $('titulo').textContent = cliente ? `${cliente.nome}${mes ? ' · ' + mes.titulo : ''}` : 'Comece criando um cliente';
+    $('titulo').textContent = cliente ? `${cliente.nome}${mes ? ' · ' + mes.titulo : ''}` : (nivel >= 2 ? 'Comece criando um cliente' : 'Nenhum cliente liberado');
+    $('btnNovoMes').hidden = !cliente;
     $('chkPub').checked = !!(mes && mes.publicado);
     $('chkPub').disabled = !mes || nivel < 2;
     const base = new URL('c',location.href).href;
@@ -438,7 +460,7 @@
           <button data-up="${p.id}">↑</button><button data-down="${p.id}">↓</button>
           ${nivel >= 2 ? `<button data-del="${p.id}">excluir</button>` : ''}
         </td></tr>`;
-    }).join('') || `<tr class="empty-row"><td colspan="7">${mes ? 'Nenhum post neste filtro ainda.' : cliente ? 'Crie um mês para começar a subir posts.' : 'Escolha ou crie um cliente para começar.'}</td></tr>`;
+    }).join('') || `<tr class="empty-row"><td colspan="7">${mes ? 'Nenhum post neste filtro ainda.' : cliente ? 'Crie um mês para começar a subir posts.' : (nivel < 2 && !clientes.length ? 'Nenhum cliente liberado para você ainda. Fale com o Head do seu squad.' : 'Escolha ou crie um cliente para começar.')}</td></tr>`;
 
     $('lista').querySelectorAll('[data-edit]').forEach(b => b.onclick = () => editPost(b.dataset.edit));
     $('lista').querySelectorAll('[data-del]').forEach(b => b.onclick = async () => {

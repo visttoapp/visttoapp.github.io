@@ -9,7 +9,7 @@ Sistema de aprovação de posts. Cada agência vê apenas os próprios clientes,
 | 4 | Administrador geral | Tudo, em todas as agências. Cadastra donos e sócios. |
 | 3 | Dono / Sócio | Tudo na própria agência. Cadastra Heads e equipe. |
 | 2 | Head | No(s) próprio(s) squad(s): cria clientes, publica o mês, copia e renova o link, cadastra a equipe. |
-| 1 | Equipe (designer, editor de vídeo, social media, gestor de tráfego) | Nos clientes do(s) próprio(s) squad(s): cria meses, envia e edita posts, vê os retornos e marca como ajustado. Não vê o link do cliente, não publica e não exclui. |
+| 1 | Equipe (designer, editor de vídeo, social media, gestor de tráfego) | Nos clientes do(s) próprio(s) squad(s) (gestor de tráfego: só nos clientes liberados para ele): cria meses, envia e edita posts, vê os retornos e marca como ajustado. Não vê o link do cliente, não publica e não exclui. |
 
 ## Squads
 Squads são opcionais por agência (coluna `agencias.usa_squads`). Sem squads, toda a equipe vê todos os clientes da agência e o Head cuida de toda a equipe; os campos de squad somem do painel.
@@ -17,6 +17,9 @@ Squads são opcionais por agência (coluna `agencias.usa_squads`). Sem squads, t
 Cada squad tem um Head, a equipe e seus clientes. Head e equipe só enxergam os clientes (e as mídias) dos squads em que estão; dono, sócio e administrador geral enxergam todos. Uma pessoa pode estar em mais de um squad, como um gestor de tráfego compartilhado.
 
 Donos e sócios criam squads e colocam ou tiram pessoas em **Gerenciar equipe › Squads**. Ao cadastrar um cliente, escolha o squad. Quando um Head cria um login, a pessoa já entra no squad escolhido. Se o Head remove alguém, a pessoa sai só dos squads dele; sem nenhum squad, perde o acesso à agência.
+
+## Clientes do gestor de tráfego
+O gestor de tráfego não vê o squad inteiro, só os clientes marcados para ele. Em **Gerenciar equipe**, clique em **Clientes** na linha do gestor e marque os clientes. O Head marca clientes dos próprios squads; dono e sócio, de qualquer squad. Em agência com squads, o gestor precisa estar no squad do cliente. Se ele sair do squad, mudar de papel ou o cliente trocar de squad, a liberação correspondente some sozinha. Sem nenhum cliente marcado, ele não vê nada.
 
 Cada nível só cadastra, troca ou remove papéis abaixo do seu, e só na própria agência. Donos, sócios e Heads não conseguem autorizar contas que já pertencem a outra agência.
 
@@ -54,7 +57,7 @@ O link funciona como chave. **Invalidar link antigo e gerar outro** revoga o ant
 - A função `acessos` valida a sessão e o nível de quem cadastra antes de criar a conta. Ambas usam `verify_jwt=false` (ver `supabase/config.toml`); a chave privilegiada fica só no servidor.
 
 ### Banco
-No projeto em uso, `multi-agencias.sql`, `hierarquia.sql`, `squads.sql`, `convites.sql` e `divisoes.sql` já foram aplicadas. **Não execute de novo.** `schema.sql` é a instalação completa para um banco novo.
+No projeto em uso, `multi-agencias.sql`, `hierarquia.sql`, `squads.sql`, `convites.sql`, `divisoes.sql` e `gestores.sql` já foram aplicadas. **Não execute de novo.** `schema.sql` é a instalação completa para um banco novo.
 
 Instalação nova: execute `schema.sql`, crie a primeira conta no Supabase Auth, cadastre o UUID em `administradores`, ajuste os nomes em `agencias`, configure `js/config.js` com a URL e a publishable key, publique as funções `cliente`, `acessos` e `primeiro-acesso` e configure a URL do site no Auth.
 
