@@ -8,9 +8,9 @@
 <link rel="icon" href="assets/vistto.svg" type="image/svg+xml">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Cormorant+Garamond:wght@500&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/style.css?v=20260917g"><link rel="stylesheet" href="css/agencies.css?v=20260917g">
+<link rel="stylesheet" href="css/style.css?v=20260917i"><link rel="stylesheet" href="css/agencies.css?v=20260917i">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="js/config.js?v=20260917g"></script>
+<script src="js/config.js?v=20260917i"></script>
 </head>
 <body class="admin" data-tema="neutro"><script>if (new URLSearchParams(location.search).has("t") || new URLSearchParams(location.hash.slice(1)).has("t")) location.replace("c" + location.search + location.hash);</script>
 
@@ -73,6 +73,7 @@
         <div><span class="eyebrow">Aprovação de conteúdo</span><h2 id="titulo">—</h2></div>
         <div class="actions">
           <select id="filterStatus" aria-label="Filtrar posts"><option value="">Todos os status</option><option value="pendente">Aguardando</option><option value="ajuste">Ajustes solicitados</option><option value="aprovado">Aprovados</option></select>
+          <button class="btn" id="btnImportPasta" hidden><svg class="i" viewBox="0 0 16 16"><path d="M2 5.5A1.5 1.5 0 0 1 3.5 4h2l1.2 1.5h5.8A1.5 1.5 0 0 1 14 7v4.5A1.5 1.5 0 0 1 12.5 13h-9A1.5 1.5 0 0 1 2 11.5z"/></svg>Importar pasta</button>
           <button class="btn" id="btnEditarCliente" hidden><svg class="i" viewBox="0 0 16 16"><path d="M11 2.5l2.5 2.5L5.5 13H3v-2.5z"/></svg>Editar cliente</button>
           <button class="btn" id="btnRefresh"><svg class="i" viewBox="0 0 16 16"><path d="M13.5 8a5.5 5.5 0 1 1-1.6-3.9M13.5 2.5v3h-3"/></svg>Atualizar aprovações</button>
         </div>
@@ -139,6 +140,18 @@
         <div class="msg" id="msgMes"></div>
       </div>
 
+      <!-- IMPORTAR PASTA -->
+      <div class="card" id="cardImport" hidden>
+        <div class="card-head"><div><h4>Importar a pasta do mês</h4><p>Escolha a pasta do mês no seu computador. Pasta com várias artes vira carrossel na ordem dos nomes, arte solta vira post, .mp4 vira reel. Só a ordem e o número vêm do nome: data, tema e legenda você preenche depois.</p></div></div>
+        <div class="drop" id="dropPasta"><span><b>Clique para escolher a pasta</b></span><span class="hint">Ex.: clientes/Blocok/2026/09 · nada é enviado antes de você conferir</span></div>
+        <div id="importLista"></div>
+        <div class="actions" id="importAcoes" hidden>
+          <button class="btn primary" id="btnImportar">Importar selecionados</button>
+          <button class="btn ghost" id="btnFecharImport">Cancelar</button>
+        </div>
+        <div class="msg" id="msgImport"></div>
+      </div>
+
       <div class="summary" id="summary"></div>
 
       <!-- PUBLICAÇÃO -->
@@ -186,6 +199,6 @@
   </main>
 </div>
 
-<script src="js/brand.js?v=20260917g"></script><script src="js/media.js?v=20260917g"></script><script src="js/admin.js?v=20260917g"></script>
+<script src="js/brand.js?v=20260917i"></script><script src="js/media.js?v=20260917i"></script><script src="js/importar.js?v=20260917i"></script><script src="js/admin.js?v=20260917i"></script>
 </body>
 </html>

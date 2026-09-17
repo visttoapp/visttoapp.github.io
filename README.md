@@ -49,6 +49,11 @@ Um e-mail é uma conta. Para ter contas separadas por agência com a mesma caixa
 
 O link funciona como chave. **Invalidar link antigo e gerar outro** revoga o anterior. URLs temporárias de mídia já emitidas duram até uma hora. O status de um post só muda pela resposta do cliente ou por "marcar como ajustado".
 
+## Importar a pasta do mês
+Com o mês aberto, **Importar pasta** (no topo) lê uma pasta do computador e monta os posts. A regra: pasta com várias artes vira carrossel na ordem dos nomes, arte solta vira post de imagem, `.mp4` vira reel e puxa a capa de mesmo nome ou número. Pastas de categoria (`carrosseis`, `esteticos`, `feed`, `reels`, `stories`, `artes`…) são só organização e não viram post. Pastas de trabalho (`brutos`, `psd`, `editaveis`, `fontes`, `refs`, `backup`) e formatos fora de JPG, PNG, WebP, GIF e MP4 ficam de fora.
+
+Do nome saem só o número (`01`, `1.`, `01 -`) e a ordem; o resto do nome entra como tema, para ajustar. Data, legenda e título ficam vazios de propósito, porque nem todo arquivo traz essa informação. Antes de subir nada, o painel mostra uma revisão com número, tema, dia e formato editáveis, marca quem já tem número igual no mês (desmarcado) e avisa quando o reel está sem capa ou o número foi deduzido. O leitor de nomes fica em `js/importar.js` e é coberto por `tests/importar.mjs`.
+
 ## Baixar os originais
 Na lista de posts, **baixar** entrega os arquivos exatamente como foram enviados, sem compressão: imagem única sai como arquivo, carrossel sai em .zip com as lâminas numeradas na ordem, reel sai com vídeo e capa. Quem enxerga o post pode baixar. O .zip é montado no navegador com o JSZip (`js/vendor`, licença MIT).
 

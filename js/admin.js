@@ -293,6 +293,7 @@
     $('titulo').textContent = cliente ? `${cliente.nome}${mes ? ' · ' + mes.titulo : ''}` : (nivel >= 2 ? 'Comece criando um cliente' : 'Nenhum cliente liberado');
     $('btnNovoMes').hidden = !cliente;
     $('btnEditarCliente').hidden = !cliente || nivel < 2;
+    $('btnImportPasta').hidden = !mes;
     $('btnExcluirMes').hidden = !mes || nivel < 2;
     $('chkPub').checked = !!(mes && mes.publicado);
     $('chkPub').disabled = !mes || nivel < 2;
@@ -469,6 +470,100 @@
     if (error) { $('msgPost').textContent = error.message; $('msgPost').className = 'msg err'; return; }
     $('msgPost').textContent = 'Salvo.'; $('msgPost').className = 'msg ok';
     await selectMes(mes.id);
+  };
+
+  /* ---------- importar a pasta do mês ---------- */
+  let importPosts = [];
+  $('btnImportPasta').onclick = () => {
+    if (!mes) return alert('Escolha ou crie um mês primeiro.');
+    verEquipe(false); importPosts = []; renderImport();
+    $('msgImport').textContent = ''; $('msgImport').className = 'msg';
+    $('cardImport').hidden = false; mostrar('cardImport');
+  };
+  $('btnFecharImport').onclick = () => { $('cardImport').hidden = true; importPosts = []; renderImport(); };
+  $('dropPasta').onclick = () => {
+    const inp = document.createElement('input');
+    inp.type = 'file'; inp.multiple = true; inp.webkitdirectory = true;
+    inp.onchange = () => { lerPasta([...inp.files]); };
+    inp.click();
+  };
+  function lerPasta(fl) {
+    if (!fl.length) return;
+    const { posts: achados, ignorados } = PASTA.analisar(fl.map(f => ({ caminho: f.webkitRelativePath || f.name, nome: f.name, arquivo: f })));
+    importPosts = achados.map(p => ({ ...p, usar: true, repetido: posts.some(x => (x.numero || '') === p.numero) }));
+    importPosts.forEach(p => { if (p.repetido) p.usar = false; });
+    const partes = [];
+    partes.push(`${achados.length} post(s) encontrado(s) em ${fl.length} arquivo(s).`);
+    if (ignorados.length) partes.push(`${ignorados.length} arquivo(s) fora do padrão foram deixados de lado (${[...new Set(ignorados.map(i => i.motivo))].slice(0, 3).join(', ')}).`);
+    if (importPosts.some(p => p.repetido)) partes.push('Os números que já existem neste mês vieram desmarcados.');
+    $('msgImport').textContent = partes.join(' ');
+    $('msgImport').className = achados.length ? 'msg' : 'msg err';
+    renderImport();
+  }
+  function renderImport() {
+    const L = $('importLista');
+    $('importAcoes').hidden = !importPosts.length;
+    if (!importPosts.length) { L.innerHTML = ''; return; }
+    L.innerHTML = importPosts.map((p, i) => `<div class="imp ${p.usar ? '' : 'off'}">
+      <label class="check"><input type="checkbox" data-usar="${i}" ${p.usar ? 'checked' : ''}><span>usar</span></label>
+      <div class="imp-campos">
+        <input data-numero="${i}" value="${esc(p.numero)}" aria-label="Número" size="3">
+        <input data-tema="${i}" value="${esc(p.tema)}" aria-label="Tema" placeholder="Tema">
+        <input data-data="${i}" value="${esc(p.data || '')}" aria-label="Dia da postagem" placeholder="dia" size="5">
+        <select data-tipo="${i}" aria-label="Formato">${Object.entries(TIPO).map(([k, v]) => `<option value="${k}" ${k === p.tipo ? 'selected' : ''}>${v}</option>`).join('')}</select>
+      </div>
+      <div class="imp-info">
+        <small>${p.arquivos.length} arquivo(s) · ${esc(p.origem)}</small>
+        ${p.repetido ? '<small class="alerta">número já existe neste mês</small>' : ''}
+        ${p.avisos.map(a => `<small class="alerta">${esc(a)}</small>`).join('')}
+      </div>
+    </div>`).join('');
+    L.querySelectorAll('[data-usar]').forEach(c => c.onchange = () => { importPosts[+c.dataset.usar].usar = c.checked; renderImport(); });
+    L.querySelectorAll('[data-numero]').forEach(c => c.oninput = () => importPosts[+c.dataset.numero].numero = c.value);
+    L.querySelectorAll('[data-tema]').forEach(c => c.oninput = () => importPosts[+c.dataset.tema].tema = c.value);
+    L.querySelectorAll('[data-data]').forEach(c => c.oninput = () => importPosts[+c.dataset.data].data = c.value);
+    L.querySelectorAll('[data-tipo]').forEach(c => c.onchange = () => importPosts[+c.dataset.tipo].tipo = c.value);
+    $('btnImportar').textContent = `Importar ${importPosts.filter(p => p.usar).length} post(s)`;
+  }
+  $('btnImportar').onclick = async () => {
+    const fila = importPosts.filter(p => p.usar);
+    if (!mes || !fila.length) return;
+    const total = fila.reduce((n, p) => n + p.arquivos.length, 0);
+    let feitos = 0, criados = 0;
+    $('btnImportar').disabled = true; $('btnFecharImport').disabled = true;
+    try {
+      for (const p of fila) {
+        const enviados = [];
+        for (const a of p.arquivos) {
+          $('msgImport').textContent = `Enviando ${++feitos} de ${total} arquivo(s)… (post ${p.numero})`;
+          $('msgImport').className = 'msg';
+          const url = await upload(a.arquivo, `${cliente.slug}/${mes.ano_mes}`);
+          if (!url) throw new Error('Um arquivo não subiu. Os posts já criados continuam no mês.');
+          enviados.push({ url, video: a.video });
+        }
+        const imgs = enviados.filter(x => !x.video).map(x => x.url);
+        const vid = enviados.find(x => x.video);
+        const tipo = vid ? 'reel' : p.tipo === 'reel' ? 'image' : p.tipo;
+        const { error } = await sb.from('posts').insert({
+          mes_id: mes.id, ordem: posts.length + criados, numero: String(p.numero || '').trim() || null,
+          data: (p.data || '').trim() || null, tema: (p.tema || '').trim(), titulo: (p.tema || '').trim(),
+          tipo, legenda: '', slides: tipo === 'reel' ? [] : imgs,
+          video_url: vid ? vid.url : null, capa_url: tipo === 'reel' ? (imgs[0] || null) : null
+        });
+        if (error) throw new Error(error.message);
+        criados++;
+      }
+      $('msgImport').textContent = `${criados} post(s) criado(s) na ordem da pasta. Agora preencha tema, dia e legenda de cada um, em "editar", antes de publicar o mês.`;
+      $('msgImport').className = 'msg ok';
+      importPosts = []; renderImport(); $('cardImport').hidden = true;
+      await selectMes(mes.id);
+    } catch (e) {
+      $('msgImport').textContent = (criados ? `${criados} post(s) criado(s) antes do erro. ` : '') + (e.message || 'Não foi possível importar.');
+      $('msgImport').className = 'msg err';
+      if (criados) await selectMes(mes.id);
+    } finally {
+      $('btnImportar').disabled = false; $('btnFecharImport').disabled = false;
+    }
   };
 
   /* ---------- download dos originais ---------- */

@@ -234,6 +234,22 @@ td:nth-child(3){min-width:160px}
 #accessList [data-revoke]{color:var(--danger)}
 #accessList [data-revoke]:hover{background:var(--danger-soft)}
 #accessList p{color:var(--text-2)}
+/* importar pasta */
+.imp{display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px;padding:12px 0;border-top:1px solid var(--border)}
+.imp:first-child{border-top:0}
+.imp.off{opacity:.55}
+.imp .check{min-height:34px;padding:6px 10px;font-size:13px}
+.imp-campos{display:flex;flex-wrap:wrap;align-items:center;gap:8px;flex:1 1 380px}
+.imp-campos input,.imp-campos select{min-height:34px;padding:4px 10px;font-size:13px}
+.imp-campos>*{min-width:0}
+.imp-campos input[data-numero]{flex:0 0 60px;text-align:center}
+.imp-campos input[data-tema]{flex:1 1 200px}
+.imp-campos input[data-data]{flex:0 0 88px}
+.imp-campos select{flex:0 0 152px;padding-right:28px}
+.imp-info{display:flex;flex-direction:column;gap:2px;flex:0 1 220px}
+.imp-info small{font-size:12px;color:var(--text-3);overflow-wrap:anywhere}
+.imp-info small.alerta{color:var(--warning)}
+#importLista{margin-top:16px}
 #btnExcluirMes,#btnExcluirCliente{color:var(--danger)}
 #btnExcluirMes:hover,#btnExcluirCliente:hover{background:var(--danger-soft)}
 #btnExcluirCliente{margin-left:auto}
@@ -290,7 +306,7 @@ details#loteBox p{color:var(--text-2);font-size:13px;margin-bottom:10px}
 .login-foot{text-align:center;color:var(--text-3);font-size:12px;margin-bottom:24px}
 
 /* visão Equipe: esconde o fluxo de posts */
-body.vendo-equipe #summary,body.vendo-equipe #cardLink,body.vendo-equipe #cardPost,body.vendo-equipe .lista-card,body.vendo-equipe .page-head .actions,body.vendo-equipe #cardCliente,body.vendo-equipe #cardMes{display:none!important}
+body.vendo-equipe #summary,body.vendo-equipe #cardLink,body.vendo-equipe #cardPost,body.vendo-equipe .lista-card,body.vendo-equipe .page-head .actions,body.vendo-equipe #cardCliente,body.vendo-equipe #cardMes,body.vendo-equipe #cardImport{display:none!important}
 
 /* troca obrigatória de senha */
 body.trocar-senha .main .wrap>:not(#cardSenha),body.trocar-senha .sidebar .side-section,body.trocar-senha #btnFecharSenha,body.trocar-senha #btnMinhaSenha{display:none!important}
