@@ -27,7 +27,7 @@ Cada nível só cadastra, troca ou remove papéis abaixo do seu, e só na própr
 1. Entre no painel e clique em **Gerenciar equipe** (Head, sócio, dono e administrador geral).
 2. O administrador geral escolhe antes a agência no seletor.
 3. Preencha nome, e-mail, papel e squad e clique em **Cadastrar e gerar código**.
-4. O painel mostra um código de 6 números (vale 7 dias). Envie para a pessoa o endereço do sistema, o e-mail cadastrado e o código.
+4. O painel mostra um código de 6 números (vale 48 horas). Envie para a pessoa o endereço do sistema, o e-mail cadastrado e o código.
 5. A pessoa abre o sistema, clica em **Primeiro acesso**, digita e-mail e código e cria a própria senha (mínimo 8 caracteres).
 6. Para várias pessoas, use **Cadastro em lote**: uma por linha, `Nome; e-mail; papel; squad`. Sai um código para cada uma.
 7. Se a pessoa já tem conta sem agência, use **Autorizar conta existente**.
@@ -36,7 +36,7 @@ Cada nível só cadastra, troca ou remove papéis abaixo do seu, e só na própr
 Um e-mail é uma conta. Para ter contas separadas por agência com a mesma caixa do Gmail, use apelidos como `nome+1@gmail.com` e `nome+2@gmail.com`.
 
 ## Senhas
-- **Primeiro acesso:** e-mail + código de 6 números gerado por quem cadastrou. O código vale 7 dias e bloqueia após 5 tentativas erradas.
+- **Primeiro acesso:** e-mail + código de 6 números gerado por quem cadastrou. O código vale 48 horas e bloqueia após 5 tentativas erradas, contadas no banco de forma atômica.
 - **Trocar a própria senha:** **trocar minha senha**, no rodapé da barra lateral.
 - **Esqueceu a senha:** peça ao responsável um **novo código** (em Gerenciar equipe). O botão **Esqueci minha senha** manda link por e-mail, mas só funciona para qualquer endereço depois de configurar SMTP próprio no Supabase (Authentication › Emails › SMTP Settings).
 
@@ -67,6 +67,9 @@ O plano atual do Supabase guarda 1 GB de arquivos, com no máximo 50 MB por arqu
 
 Duas ações: **apagar arquivos sem dono** remove do servidor o que nenhum post, cliente ou destaque referencia (arquivos da lista `midia_legada` nunca saem), e **arquivar mês** limpa as artes daquele mês, fecha o link do cliente e mantém post, tema, legenda e histórico de aprovação. As duas passam pela função `limpeza`, que confere o nível pelas funções `plano_limpeza` e `arquivar_mes` com o token de quem clicou. Não existe rotina automática: alguém precisa clicar.
 
+## Fechaduras
+O número e a data do post são limitados no banco a texto simples e curto, e a página do cliente escapa tudo o que vem do banco. As duas páginas carregam com uma política de conteúdo (CSP) que só deixa rodar script do próprio site. O código de primeiro acesso conta a tentativa no banco antes de conferir, numa operação só, então pedidos simultâneos não furam o limite de 5, e o código vale 48 horas. O Storage do Supabase não aceita mais envio novo: tudo que entra agora vai para o R2. O Worker responde a pedido de trecho (Range), que é o que o Safari do iPhone exige para tocar vídeo.
+
 ## Arquitetura
 - GitHub Pages publica os arquivos estáticos em https://visttoapp.github.io/ (painel na raiz, página do cliente em `/c`). Ao alterar JS ou CSS, troque o `?v=` nos HTML para ninguém ficar com versão misturada em cache.
 - Supabase Auth cuida dos logins. RLS isola agências, clientes, meses, posts, históricos e mídias, e aplica os níveis acima.
@@ -75,7 +78,7 @@ Duas ações: **apagar arquivos sem dono** remove do servidor o que nenhum post,
 - A função `acessos` valida a sessão e o nível de quem cadastra antes de criar a conta. Ambas usam `verify_jwt=false` (ver `supabase/config.toml`); a chave privilegiada fica só no servidor.
 
 ### Banco
-No projeto em uso, `multi-agencias.sql`, `hierarquia.sql`, `squads.sql`, `convites.sql`, `divisoes.sql`, `gestores.sql`, `espaco.sql` e `r2.sql` já foram aplicadas. **Não execute de novo.** `schema.sql` é a instalação completa para um banco novo.
+No projeto em uso, `multi-agencias.sql`, `hierarquia.sql`, `squads.sql`, `convites.sql`, `divisoes.sql`, `gestores.sql`, `espaco.sql`, `r2.sql` e `endurecer.sql` já foram aplicadas. **Não execute de novo.** `schema.sql` é a instalação completa para um banco novo.
 
 Instalação nova: execute `schema.sql`, crie a primeira conta no Supabase Auth, cadastre o UUID em `administradores`, ajuste os nomes em `agencias`, configure `js/config.js` com a URL e a publishable key, publique as funções `cliente`, `acessos` e `primeiro-acesso` e configure a URL do site no Auth.
 

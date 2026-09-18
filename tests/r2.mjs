@@ -14,7 +14,7 @@ create function public.gen_random_bytes(n integer) returns bytea language sql as
 create function extensions.gen_random_bytes(n integer) returns bytea language sql as $$select public.gen_random_bytes(n) $$;`);
 const rd = f => fs.readFileSync(new URL(f, import.meta.url), 'utf8');
 await db.exec(rd('./fixtures/schema-v1.sql').replace('create extension if not exists pgcrypto;', ''));
-for (const f of ['multi-agencias', 'hierarquia', 'squads', 'convites', 'divisoes', 'gestores', 'espaco', 'r2']) await db.exec(rd(`../supabase/${f}.sql`));
+for (const f of ['multi-agencias', 'hierarquia', 'squads', 'convites', 'divisoes', 'gestores', 'espaco', 'r2', 'endurecer']) await db.exec(rd(`../supabase/${f}.sql`));
 
 const A = { a: '10000000-0000-4000-8000-000000000001', b: '10000000-0000-4000-8000-000000000002' };
 const P = { admin: null, dono: ['b', 'dono'], head1: ['b', 'head'], head2: ['b', 'head'], des1: ['b', 'designer'], des2: ['b', 'designer'], traf: ['b', 'gestor_trafego'], desA: ['a', 'designer'], fora: null };
@@ -90,11 +90,36 @@ await as('des1', async () => {
   await q(`update posts set slides=$1 where id=$2`, [JSON.stringify([R.slide, `r2:${A.b}/nova.jpg`]), p1]); ok();
   await assert.rejects(q(`update posts set slides=$1 where id=$2`, [JSON.stringify([R.outraAg]), p1])); ok();
 });
+// número do post é texto simples: nada de código na página do cliente
+await as('des1', async () => {
+  await assert.rejects(q(`update posts set numero=$1 where id=$2`, ['<img src=x onerror=alert(1)>', p1])); ok();
+  await assert.rejects(q(`update posts set numero=$1 where id=$2`, ['0123456789012345', p1])); ok();
+  await q(`update posts set numero=$1 where id=$2`, ['01', p1]); ok();
+  await q(`update posts set numero=$1 where id=$2`, ['1-2 A', p1]); ok();
+  await assert.rejects(q(`update posts set data=$1 where id=$2`, ['x'.repeat(20), p1])); ok();
+});
+
+// código de primeiro acesso: a tentativa é contada antes da conferência
+const uConv = id.des2;
+await q(`insert into convites(usuario_id,codigo_hash,expira_em) values($1,'hash',now()+interval '2 days')`, [uConv]);
+const tentar = async () => (await rows(`select * from tentar_convite($1)`, ['des2@x.test'])).length;
+for (let n = 1; n <= 5; n++) { assert.equal(await tentar(), 1, 'tentativa ' + n); ok(); }
+assert.equal(await tentar(), 0); ok();
+assert.equal((await rows('select tentativas from convites where usuario_id=$1', [uConv]))[0].tentativas, 5); ok();
+// convite vencido não devolve nada
+await q(`update convites set tentativas=0, expira_em=now()-interval '1 hour' where usuario_id=$1`, [uConv]);
+assert.equal(await tentar(), 0); ok();
+// e a equipe não alcança a função
+await as('des1', async () => { await assert.rejects(q(`select * from tentar_convite($1)`, ['des2@x.test'])); ok(); });
+
+// o Storage do Supabase não aceita mais envio novo
+assert.equal((await rows(`select count(*)::int n from pg_policies where tablename='objects' and policyname='midia_agencia_insert'`))[0].n, 0); ok();
+
 // anônimo não usa nenhuma das duas funções
 await db.exec('set role anon');
 await assert.rejects(q('select pode_ref($1)', [R.slide])); ok();
 await assert.rejects(q('select pode_enviar($1)', [A.b])); ok();
 await db.exec('reset role');
 
-console.log('PASS:', checks, 'checks do R2: caminho, quem vê cada arte, gestor por cliente, quem envia e isolamento entre agências.');
+console.log('PASS:', checks, 'checks do R2 e das fechaduras: caminho, quem vê cada arte, quem envia, número sem código, tentativa atômica e Storage fechado.');
 await db.close();

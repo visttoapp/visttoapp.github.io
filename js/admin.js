@@ -239,7 +239,7 @@
   $('btnAccess').onclick=async()=>{const abrir=$('accessCard').hidden;verEquipe(abrir);if(abrir) await accessList();};
   $('btnFecharEquipe').onclick=()=>verEquipe(false);
   $('grantAccess').onclick=async()=>{try{await run(sb.rpc('autorizar_acesso',{p_agencia:agencia.id,p_email:$('accessEmail').value.trim(),p_papel:$('accessPapel').value,p_nome:$('accessNome').value.trim()||null,p_squad:$('accessSquad').value||null}));$('accessMsg').textContent='Acesso autorizado.';await accessList();}catch(e){$('accessMsg').textContent=e.message;}};
-  const instrucao=(nome,email,codigo)=>`${nome||email}: código ${codigo} (vale 7 dias). Envie para a pessoa: acesse ${new URL('./',location.href).href}, clique em Primeiro acesso, use o e-mail ${email} e o código ${codigo}.`;
+  const instrucao=(nome,email,codigo)=>`${nome||email}: código ${codigo} (vale 48 horas). Envie para a pessoa: acesse ${new URL('./',location.href).href}, clique em Primeiro acesso, use o e-mail ${email} e o código ${codigo}.`;
   $('createAccess').onclick=async()=>{
     const email=$('accessEmail').value.trim(), nome=$('accessNome').value.trim();
     if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){$('accessMsg').textContent='E-mail inválido. Confira se está no formato nome@dominio.com.';return;}

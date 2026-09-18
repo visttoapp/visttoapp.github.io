@@ -74,18 +74,25 @@ usaSquads=true;
  const {createHash}=await import('node:crypto');
  const h=t=>createHash('sha256').update(t).digest('hex');
  const U='60000000-0000-4000-8000-000000000001';
- let conv={usuario_id:U,codigo_hash:h(U+':123456'),expira_em:new Date(Date.now()+864e5).toISOString(),tentativas:0};
- let upd=[],del=0,tent=[];
- const pa=load('primeiro-acesso',{rpc:async(n,a)=>({data:a.p_email.trim().toLowerCase()==='p@x.test'&&conv?[conv]:[]}),auth:{admin:{updateUserById:async(id,o)=>{upd.push([id,o]);return {error:null};}}},
-   from:()=>{const q={update:v=>{tent.push(v.tentativas);conv={...conv,tentativas:v.tentativas};return q;},delete:()=>{del++;return q;},eq:async()=>({error:null})};return q;}});
+ // O banco conta a tentativa e só devolve o convite enquanto houver tentativa sobrando e o prazo valer.
+ let tentativas=0,vencido=false,rpcs=[];
+ let upd=[],del=0;
+ const pa=load('primeiro-acesso',{rpc:async(n,a)=>{rpcs.push(n);
+     if(n!=='tentar_convite'||a.p_email.trim().toLowerCase()!=='p@x.test')return {data:[]};
+     if(vencido||tentativas>=5){tentativas++;return {data:[]};}
+     tentativas++;return {data:[{usuario_id:U,codigo_hash:h(U+':123456')}]};},
+   auth:{admin:{updateUserById:async(id,o)=>{upd.push([id,o]);return {error:null};}}},
+   from:()=>{const q={delete:()=>{del++;return q;},eq:async()=>({error:null})};return q;}});
  const r=async b=>{const x=await pa(req(b));return {status:x.status,body:await x.json()};};
  assert.equal((await r({email:'p@x.test',codigo:'12345',password:'senhaboa1'})).status,400);checks++;
  assert.match((await r({email:'p@x.test',codigo:'123456',password:'curta'})).body.error,/8/);checks++;
+ assert.equal(tentativas,0);checks++; // pedido malformado nem chega no banco
  assert.equal((await r({email:'outro@x.test',codigo:'123456',password:'senhaboa1'})).status,400);checks++;
- assert.equal((await r({email:'p@x.test',codigo:'654321',password:'senhaboa1'})).status,400);assert.deepEqual(tent,[1]);assert.equal(upd.length,0);checks++;
- conv.tentativas=5;assert.equal((await r({email:'p@x.test',codigo:'123456',password:'senhaboa1'})).status,400);assert.equal(upd.length,0);checks++;
- conv.tentativas=0;conv.expira_em=new Date(Date.now()-1000).toISOString();assert.equal((await r({email:'p@x.test',codigo:'123456',password:'senhaboa1'})).status,400);checks++;
- conv.expira_em=new Date(Date.now()+864e5).toISOString();
+ assert.equal((await r({email:'p@x.test',codigo:'654321',password:'senhaboa1'})).status,400);assert.equal(tentativas,1);assert.equal(upd.length,0);checks++;
+ assert.deepEqual([...new Set(rpcs)],['tentar_convite']);checks++;
+ tentativas=5;assert.equal((await r({email:'p@x.test',codigo:'123456',password:'senhaboa1'})).status,400);assert.equal(upd.length,0);checks++;
+ tentativas=0;vencido=true;assert.equal((await r({email:'p@x.test',codigo:'123456',password:'senhaboa1'})).status,400);assert.equal(upd.length,0);checks++;
+ vencido=false;tentativas=0;
  const ok=await r({email:'P@x.test',codigo:' 123456 ',password:'senhaboa1'});
  assert.equal(ok.status,200);assert.equal(upd[0][0],U);assert.equal(upd[0][1].password,'senhaboa1');assert.equal(upd[0][1].user_metadata.trocar_senha,false);assert.equal(del,1);checks++;
 }

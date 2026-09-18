@@ -12,13 +12,11 @@ Deno.serve(async req=>{
   if(typeof password!=='string'||password.length<8)return reply({error:'A senha precisa ter pelo menos 8 caracteres.'},400);
   if(password.length>128)return reply({error:'A senha pode ter no máximo 128 caracteres.'},400);
   const sb=createClient(Deno.env.get('SUPABASE_URL')!,Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,{auth:{persistSession:false}});
-  const {data,error}=await sb.rpc('convite_por_email',{p_email:email});
+  // A tentativa é contada no banco antes da conferência, então vários pedidos ao mesmo tempo não furam o limite de 5.
+  const {data,error}=await sb.rpc('tentar_convite',{p_email:email});
   const c=Array.isArray(data)?data[0]:null;
-  if(error||!c||c.tentativas>=5||new Date(c.expira_em).getTime()<Date.now())return reply({error:INVALIDO},400);
-  if(await hash(c.usuario_id+':'+codigo.trim())!==c.codigo_hash){
-   await sb.from('convites').update({tentativas:c.tentativas+1}).eq('usuario_id',c.usuario_id);
-   return reply({error:INVALIDO},400);
-  }
+  if(error||!c)return reply({error:INVALIDO},400);
+  if(await hash(c.usuario_id+':'+codigo.trim())!==c.codigo_hash)return reply({error:INVALIDO},400);
   const {error:updError}=await sb.auth.admin.updateUserById(c.usuario_id,{password,user_metadata:{trocar_senha:false}});
   if(updError)return reply({error:/weak|pwned|leak/i.test(updError.message)?'Essa senha é fraca ou já vazou em outro site. Escolha outra.':'Não foi possível criar a senha. Tente outra.'},400);
   await sb.from('convites').delete().eq('usuario_id',c.usuario_id);

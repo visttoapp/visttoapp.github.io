@@ -12,7 +12,14 @@ const bucket = new Map();
 const env = {
   SIGN_SECRET: SEGREDO,
   MIDIA: {
-    async get(k) { const v = bucket.get(k); return v ? { body: v.body, size: v.body.length, httpMetadata: { contentType: v.tipo }, httpEtag: '"x"' } : null; },
+    async get(k, opt) {
+      const v = bucket.get(k);
+      if (!v) return null;
+      const o = { body: v.body, size: v.body.length, httpMetadata: { contentType: v.tipo }, httpEtag: '"x"' };
+      const cab = opt?.range?.get?.('Range');
+      if (cab) { const m = cab.match(/bytes=(\d+)-(\d*)/); if (m) { const ini = +m[1], fim = m[2] ? +m[2] : v.body.length - 1; o.range = { offset: ini, length: fim - ini + 1 }; o.body = v.body.slice(ini, fim + 1); } }
+      return o;
+    },
     async head(k) { return bucket.has(k) ? { size: 1 } : null; },
     async put(k, body, opt) { bucket.set(k, { body: 'conteudo', tipo: opt?.httpMetadata?.contentType }); },
     async delete(k) { bucket.delete(k); }
@@ -71,6 +78,19 @@ assert.equal(r.status, 404); ok();
 r = await chamar('DELETE', CAMINHO);
 assert.equal(r.status, 200); ok();
 assert.equal(bucket.has(CAMINHO), false); ok();
+
+// vídeo no iPhone: pedido de pedaço recebe resposta parcial
+await chamar('PUT', 'ag/video.mp4', { tipo: 'video/mp4', corpo: 'conteudo' });
+let e2 = futuro(); let s2 = await assinar('GET', 'ag/video.mp4', String(e2));
+r = await worker.fetch(new Request(`https://x/m/ag/video.mp4?exp=${e2}&sig=${s2}`, { headers: { Range: 'bytes=2-5' } }), env);
+assert.equal(r.status, 206); ok();
+assert.equal(r.headers.get('Content-Range'), 'bytes 2-5/8'); ok();
+assert.equal(r.headers.get('Content-Length'), '4'); ok();
+assert.equal(await r.text(), 'nteu'); ok();
+r = await chamar('GET', 'ag/video.mp4');
+assert.equal(r.status, 200); ok();
+assert.equal(r.headers.get('Accept-Ranges'), 'bytes'); ok();
+assert.equal(r.headers.get('Content-Length'), '8'); ok();
 
 // site de fora não recebe permissão de CORS
 r = await chamar('GET', 'ag/nada.jpg', { origem: 'https://site-estranho.com' });

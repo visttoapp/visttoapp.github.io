@@ -59,11 +59,21 @@ export default {
     if (!iguais(sig, esperada)) return erro(req, 'Link inválido.', 403);
 
     if (req.method === 'GET' || req.method === 'HEAD') {
-      const obj = await env.MIDIA.get(caminho);
+      // Range: o Safari do iPhone só toca vídeo se o servidor souber mandar um pedaço.
+      const pedido = req.headers.get('Range');
+      const obj = await env.MIDIA.get(caminho, pedido ? { range: req.headers } : undefined);
       if (!obj) return erro(req, 'Arquivo não encontrado.', 404);
-      const h = cabecalhos(req, { 'Cache-Control': 'private, max-age=3600', 'Content-Type': obj.httpMetadata?.contentType || 'application/octet-stream' });
-      if (obj.size != null) h['Content-Length'] = String(obj.size);
+      const h = cabecalhos(req, { 'Cache-Control': 'private, max-age=3600', 'Content-Type': obj.httpMetadata?.contentType || 'application/octet-stream', 'Accept-Ranges': 'bytes' });
       if (obj.httpEtag) h['ETag'] = obj.httpEtag;
+      const total = obj.size;
+      if (pedido && obj.range) {
+        const inicio = obj.range.offset || 0;
+        const tamanho = obj.range.length != null ? obj.range.length : (total - inicio);
+        h['Content-Range'] = `bytes ${inicio}-${inicio + tamanho - 1}/${total}`;
+        h['Content-Length'] = String(tamanho);
+        return new Response(req.method === 'HEAD' ? null : obj.body, { status: 206, headers: h });
+      }
+      if (total != null) h['Content-Length'] = String(total);
       return new Response(req.method === 'HEAD' ? null : obj.body, { headers: h });
     }
 

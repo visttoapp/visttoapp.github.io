@@ -33,7 +33,7 @@ Deno.serve(async req=>{
   // Squads do Head nesta agência (dono, sócio e administrador não dependem de squad).
   const emitirCodigo=async(uid:string)=>{
    const codigo=novoCodigo();
-   const {error:e}=await sb.from('convites').upsert({usuario_id:uid,codigo_hash:await hash(uid+':'+codigo),expira_em:new Date(Date.now()+7*864e5).toISOString(),tentativas:0,criado_por:auth.user.id});
+   const {error:e}=await sb.from('convites').upsert({usuario_id:uid,codigo_hash:await hash(uid+':'+codigo),expira_em:new Date(Date.now()+2*864e5).toISOString(),tentativas:0,criado_por:auth.user.id});
    if(e)throw e; return codigo;
   };
   const meusSquads=async()=>{

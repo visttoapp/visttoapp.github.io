@@ -70,7 +70,7 @@
 
     $('calList').innerHTML = posts.map(p => `
       <li><button data-post="${p.idx}">
-        <span class="num">${p.numero}</span>
+        <span class="num">${esc(p.numero)}</span>
         <span class="thumb">${cover(p) ? `<img src="${esc(cover(p))}" alt="">` : ''}</span>
         <span class="topic">${esc(p.tema)}${p.data ? `<small>${esc(p.data)}</small>` : ''}</span>
         <span class="dot ${esc(p.status)}" title="${STATUS[p.status] || ''}"></span>
@@ -86,9 +86,9 @@
 
     const order = [...posts].reverse(); // mais recente primeiro, como no Instagram
     $('feed').innerHTML = order.map(p => `
-      <button class="tile" data-post="${p.idx}" aria-label="Post ${p.numero}: ${esc(p.tema)}">
+      <button class="tile" data-post="${p.idx}" aria-label="Post ${esc(p.numero)}: ${esc(p.tema)}">
         ${p.video_url && !cover(p) ? `<video src="${esc(p.video_url)}" muted playsinline preload="metadata"></video>` : `<img src="${esc(cover(p))}" alt="" loading="lazy">`}
-        <span class="badge">${p.numero}</span>
+        <span class="badge">${esc(p.numero)}</span>
         <span class="kind">${I[p.tipo] || I.image}</span>
         ${p.status !== 'pendente' ? `<span class="st ${esc(p.status)}">${STATUS[p.status]}</span>` : ''}
         <span class="ver"><span>Ver post</span></span>
@@ -143,7 +143,7 @@
       </div>
       <div class="info">
         ${multi ? `<div class="dots" id="dots">${slides.map((_, k) => `<i class="${k === 0 ? 'on' : ''}"></i>`).join('')}</div>` : ''}
-        <div class="label">Post ${cur.numero} &nbsp;·&nbsp; ${LABEL[cur.tipo] || 'Imagem'}${multi ? ` · ${total} imagens` : ''}${cur.data ? ` &nbsp;·&nbsp; ${esc(cur.data)}` : ''}</div>
+        <div class="label">Post ${esc(cur.numero)} &nbsp;·&nbsp; ${LABEL[cur.tipo] || 'Imagem'}${multi ? ` · ${total} imagens` : ''}${cur.data ? ` &nbsp;·&nbsp; ${esc(cur.data)}` : ''}</div>
         <h3>${rich(cur.titulo)}</h3>
         <div class="label">Legenda</div>
         <div class="cap">${esc(cur.legenda)}</div>
