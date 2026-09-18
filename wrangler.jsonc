@@ -1,0 +1,12 @@
+{
+  // Worker que serve as mídias do Vistto a partir do bucket R2 (privado).
+  // O segredo SIGN_SECRET é definido no painel da Cloudflare, nunca aqui.
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "vistto-midia",
+  "main": "worker/index.js",
+  "compatibility_date": "2026-09-01",
+  "observability": { "enabled": true },
+  "r2_buckets": [
+    { "binding": "MIDIA", "bucket_name": "vistto-midia" }
+  ]
+}
