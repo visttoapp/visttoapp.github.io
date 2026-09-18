@@ -57,6 +57,11 @@ Do nome saem só o número (`01`, `1.`, `01 -`) e a ordem; o resto do nome entra
 ## Baixar os originais
 Na lista de posts, **baixar** entrega os arquivos exatamente como foram enviados, sem compressão: imagem única sai como arquivo, carrossel sai em .zip com as lâminas numeradas na ordem, reel sai com vídeo e capa. Quem enxerga o post pode baixar. O .zip é montado no navegador com o JSZip (`js/vendor`, licença MIT).
 
+## Espaço e limpeza
+O plano atual do Supabase guarda 1 GB de arquivos, com no máximo 50 MB por arquivo, e 5 GB de tráfego por mês. Em **Espaço e limpeza** (só dono, sócio e administrador geral) o painel mostra o uso, quantos arquivos não estão em nenhum post e quantos meses passaram do prazo. Acima de 80% aparece um aviso no topo do painel.
+
+Duas ações: **apagar arquivos sem dono** remove do servidor o que nenhum post, cliente ou destaque referencia (arquivos da lista `midia_legada` nunca saem), e **arquivar mês** limpa as artes daquele mês, fecha o link do cliente e mantém post, tema, legenda e histórico de aprovação. As duas passam pela função `limpeza`, que confere o nível pelas funções `plano_limpeza` e `arquivar_mes` com o token de quem clicou. Não existe rotina automática: alguém precisa clicar.
+
 ## Arquitetura
 - GitHub Pages publica os arquivos estáticos em https://visttoapp.github.io/ (painel na raiz, página do cliente em `/c`). Ao alterar JS ou CSS, troque o `?v=` nos HTML para ninguém ficar com versão misturada em cache.
 - Supabase Auth cuida dos logins. RLS isola agências, clientes, meses, posts, históricos e mídias, e aplica os níveis acima.
@@ -65,7 +70,7 @@ Na lista de posts, **baixar** entrega os arquivos exatamente como foram enviados
 - A função `acessos` valida a sessão e o nível de quem cadastra antes de criar a conta. Ambas usam `verify_jwt=false` (ver `supabase/config.toml`); a chave privilegiada fica só no servidor.
 
 ### Banco
-No projeto em uso, `multi-agencias.sql`, `hierarquia.sql`, `squads.sql`, `convites.sql`, `divisoes.sql` e `gestores.sql` já foram aplicadas. **Não execute de novo.** `schema.sql` é a instalação completa para um banco novo.
+No projeto em uso, `multi-agencias.sql`, `hierarquia.sql`, `squads.sql`, `convites.sql`, `divisoes.sql`, `gestores.sql` e `espaco.sql` já foram aplicadas. **Não execute de novo.** `schema.sql` é a instalação completa para um banco novo.
 
 Instalação nova: execute `schema.sql`, crie a primeira conta no Supabase Auth, cadastre o UUID em `administradores`, ajuste os nomes em `agencias`, configure `js/config.js` com a URL e a publishable key, publique as funções `cliente`, `acessos` e `primeiro-acesso` e configure a URL do site no Auth.
 

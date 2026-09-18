@@ -2,7 +2,7 @@
   "name": "vistto",
   "private": true,
   "scripts": {
-    "test": "node tests/access.mjs && node tests/hierarquia.mjs && node tests/squads.mjs && node tests/gestores.mjs && node tests/importar.mjs && node tests/functions.mjs"
+    "test": "node tests/access.mjs && node tests/hierarquia.mjs && node tests/squads.mjs && node tests/gestores.mjs && node tests/importar.mjs && node tests/espaco.mjs && node tests/functions.mjs"
   },
   "devDependencies": {
     "@electric-sql/pglite": "0.5.8"

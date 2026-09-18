@@ -234,6 +234,22 @@ td:nth-child(3){min-width:160px}
 #accessList [data-revoke]{color:var(--danger)}
 #accessList [data-revoke]:hover{background:var(--danger-soft)}
 #accessList p{color:var(--text-2)}
+/* espaço */
+.aviso{display:flex;gap:8px;padding:12px 16px;margin-bottom:16px;border:1px solid var(--warning-border);background:var(--warning-soft);color:var(--warning);border-radius:var(--r);font-size:14px;line-height:20px}
+.barra{height:10px;border-radius:999px;background:var(--surface-3);overflow:hidden;margin:4px 0 16px}
+.barra span{display:block;height:100%;width:0;border-radius:999px;background:var(--success);transition:width .3s}
+.barra span.meio{background:var(--warning)}
+.barra span.cheio{background:var(--danger)}
+#cardEspaco .summary{margin:0 0 16px}
+#cardEspaco .summary b{color:var(--text)!important}
+#cardEspaco .field.inline{display:flex;align-items:center;gap:8px;margin:0}
+#cardEspaco .field.inline .label{margin:0;white-space:nowrap}
+#cardEspaco .field.inline select{width:auto;min-height:38px}
+#mesesAntigos{margin-top:8px}
+#mesesAntigos .imp-campos{gap:4px 10px;align-items:baseline}
+#mesesAntigos .imp-campos small{color:var(--text-3);font-size:12px}
+#mesesAntigos .hint{color:var(--text-2);font-size:13px}
+
 /* importar pasta */
 .imp{display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px;padding:12px 0;border-top:1px solid var(--border)}
 .imp:first-child{border-top:0}
@@ -307,6 +323,7 @@ details#loteBox p{color:var(--text-2);font-size:13px;margin-bottom:10px}
 
 /* visão Equipe: esconde o fluxo de posts */
 body.vendo-equipe #summary,body.vendo-equipe #cardLink,body.vendo-equipe #cardPost,body.vendo-equipe .lista-card,body.vendo-equipe .page-head .actions,body.vendo-equipe #cardCliente,body.vendo-equipe #cardMes,body.vendo-equipe #cardImport{display:none!important}
+body.vendo-espaco #summary,body.vendo-espaco #cardLink,body.vendo-espaco #cardPost,body.vendo-espaco .lista-card,body.vendo-espaco .page-head .actions,body.vendo-espaco #cardCliente,body.vendo-espaco #cardMes,body.vendo-espaco #cardImport,body.vendo-espaco #accessCard{display:none!important}
 
 /* troca obrigatória de senha */
 body.trocar-senha .main .wrap>:not(#cardSenha),body.trocar-senha .sidebar .side-section,body.trocar-senha #btnFecharSenha,body.trocar-senha #btnMinhaSenha{display:none!important}

@@ -125,7 +125,7 @@
     $('cSquad').innerHTML=(nivel>=3?'<option value="">Sem squad (só donos e sócios veem)</option>':'')+squadOpts;
     $('accessSquad').innerHTML=(nivel>=3?'<option value="">Sem squad</option>':'')+squadOpts;
     $('accessSquad').closest('.field').hidden=!agencia.usa_squads||(nivel<3&&!squads.length);
-    $('btnAccess').hidden=nivel<2; $('btnNovoCliente').hidden=nivel<2||(nivel<3&&agencia.usa_squads&&!squads.length); $('cardLink').hidden=nivel<2;
+    $('btnAccess').hidden=nivel<2; $('btnEspaco').hidden=nivel<3; $('btnNovoCliente').hidden=nivel<2||(nivel<3&&agencia.usa_squads&&!squads.length); $('cardLink').hidden=nivel<2;
     const comSquads=!!agencia.usa_squads;
     $('squadsBox').hidden=nivel<3||!comSquads;
     $('cSquad').closest('.field').hidden=!comSquads;
@@ -133,8 +133,9 @@
     $('titulo').style.cursor=nivel>=2?'pointer':''; $('titulo').title=nivel>=2?'Editar cliente':'';
     $('accessPapel').innerHTML=Object.entries(PAPEIS).filter(([k])=>NIVEL[k]<nivel).map(([k,v])=>`<option value="${k}">${v}</option>`).join('');
     $('accessPapel').value=nivel>=3?'head':'designer';
-    $('cardCliente').hidden=true; $('cardMes').hidden=true; $('accessCard').hidden=true; document.body.classList.remove('vendo-equipe'); $('btnAccess').classList.remove('active'); $('cardSenha').hidden=!(recuperando||obrigatorio);
+    $('cardCliente').hidden=true; $('cardMes').hidden=true; $('accessCard').hidden=true; $('cardEspaco').hidden=true; document.body.classList.remove('vendo-equipe','vendo-espaco'); $('btnAccess').classList.remove('active'); $('cardSenha').hidden=!(recuperando||obrigatorio);
     await loadClientes();
+    medirEspaco();
   }
   $('selAgencia').onchange=e=>selectAgencia(e.target.value);
   $('btnRefresh').onclick=()=>selectMes(mes?.id);
@@ -273,7 +274,7 @@
     if (nivel >= 2 && !cliente.token) cliente.token = await run(sb.rpc('link_cliente', { p_cliente: cliente.id }));
     const data = await run(sb.from('meses').select('*').eq('cliente_id', cliente.id).order('ano_mes', { ascending: false }));
     meses = data || [];
-    $('selMes').innerHTML = meses.map(m => `<option value="${m.id}">${esc(m.titulo)}</option>`).join('') || '<option value="">— crie um mês —</option>';
+    $('selMes').innerHTML = meses.map(m => `<option value="${m.id}">${esc(m.titulo)}${m.arquivado_em ? ' (arquivado)' : ''}</option>`).join('') || '<option value="">— crie um mês —</option>';
     await selectMes($('selMes').value);
   }
   $('selMes').onchange = e => { verEquipe(false); selectMes(e.target.value); };
@@ -471,6 +472,79 @@
     $('msgPost').textContent = 'Salvo.'; $('msgPost').className = 'msg ok';
     await selectMes(mes.id);
   };
+
+  /* ---------- espaço e limpeza ---------- */
+  const LIMITE = 1024 * 1024 * 1024; // 1 GB do plano atual do servidor
+  const mb = b => b >= 1024 * 1024 * 1024 ? (b / 1024 / 1024 / 1024).toFixed(2) + ' GB' : Math.round(b / 1024 / 1024) + ' MB';
+  let uso = null;
+  function verEspaco(abrir) {
+    $('cardEspaco').hidden = !abrir;
+    document.body.classList.toggle('vendo-espaco', abrir);
+    $('btnEspaco').classList.toggle('active', abrir);
+    if (abrir) { verEquipe(false); mostrar('cardEspaco'); }
+  }
+  $('btnEspaco').onclick = async () => { const abrir = $('cardEspaco').hidden; verEspaco(abrir); if (abrir) await carregarEspaco(); };
+  $('btnFecharEspaco').onclick = () => verEspaco(false);
+  $('diasArquivo').onchange = () => carregarEspaco();
+  async function medirEspaco() {
+    if (nivel < 3) { uso = null; return null; }
+    try { uso = await run(sb.rpc('uso_armazenamento', { p_agencia: agencia.id, p_dias: +$('diasArquivo').value || 90 })); }
+    catch { uso = null; }
+    const cheio = uso ? uso.bytes_bucket / LIMITE : 0;
+    $('avisoEspaco').hidden = !uso || cheio < 0.8;
+    if (uso && cheio >= 0.8) $('avisoEspaco').innerHTML = `O servidor está com <b>${mb(uso.bytes_bucket)} de 1 GB</b> em uso. Abra <b>Espaço e limpeza</b> para liberar espaço antes que os envios comecem a falhar.`;
+    return uso;
+  }
+  async function carregarEspaco() {
+    $('msgEspaco').textContent = 'Conferindo…'; $('msgEspaco').className = 'msg';
+    const u = await medirEspaco();
+    if (!u) { $('msgEspaco').textContent = 'Não foi possível medir o espaço agora.'; $('msgEspaco').className = 'msg err'; return; }
+    const pct = Math.min(100, Math.round(u.bytes_bucket / LIMITE * 100));
+    $('barraUso').style.width = pct + '%';
+    $('barraUso').className = pct >= 80 ? 'cheio' : pct >= 60 ? 'meio' : '';
+    $('usoResumo').innerHTML = `<div><b>${mb(u.bytes_bucket)}</b><span>de 1 GB no servidor (${pct}%)</span></div>`
+      + `<div><b>${mb(u.bytes)}</b><span>desta agência · ${u.arquivos} arquivo(s)</span></div>`
+      + `<div><b>${mb(u.bytes_orfaos)}</b><span>${u.orfaos} arquivo(s) sem dono</span></div>`
+      + `<div><b>${u.meses_antigos}</b><span>mês(es) fora do prazo</span></div>`;
+    $('btnOrfaos').disabled = !u.orfaos;
+    $('btnOrfaos').textContent = u.orfaos ? `Apagar ${u.orfaos} arquivo(s) sem dono (${mb(u.bytes_orfaos)})` : 'Nenhum arquivo sem dono';
+    let plano = { meses: [] };
+    try { plano = await run(sb.rpc('plano_limpeza', { p_agencia: agencia.id, p_dias: +$('diasArquivo').value || 90 })); } catch {}
+    $('mesesAntigos').innerHTML = plano.meses.length
+      ? `<span class="label">Meses que podem sair do servidor</span>` + plano.meses.map(m => `<div class="imp"><div class="imp-campos"><b>${esc(m.cliente)}</b><span>${esc(m.titulo)}</span><small>${m.arquivos.length} arquivo(s) · criado em ${new Date(m.criado_em).toLocaleDateString('pt-BR')}</small></div><button class="btn sm" data-arq="${m.id}">arquivar</button></div>`).join('')
+      : '<p class="hint">Nenhum mês fora do prazo. Nada a arquivar.</p>';
+    $('mesesAntigos').querySelectorAll('[data-arq]').forEach(b => b.onclick = () => arquivar(b.dataset.arq, b));
+    $('msgEspaco').textContent = '';
+  }
+  async function chamarLimpeza(corpo) {
+    const { data: { session } } = await sb.auth.getSession();
+    const r = await fetch(cfg.SUPABASE_URL + '/functions/v1/limpeza', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', apikey: cfg.SUPABASE_ANON_KEY, Authorization: `Bearer ${session?.access_token || ''}` },
+      body: JSON.stringify({ agencia_id: agencia.id, ...corpo })
+    });
+    const j = await r.json().catch(() => ({}));
+    if (!r.ok || j.error) throw new Error(j.error || 'Não foi possível concluir a limpeza.');
+    return j;
+  }
+  $('btnOrfaos').onclick = async () => {
+    if (!uso?.orfaos) return;
+    if (!confirm(`Apagar ${uso.orfaos} arquivo(s) que não estão em nenhum post e liberar ${mb(uso.bytes_orfaos)}? Não dá para desfazer.`)) return;
+    $('btnOrfaos').disabled = true; $('msgEspaco').textContent = 'Apagando…'; $('msgEspaco').className = 'msg';
+    try { const j = await chamarLimpeza({ acao: 'orfaos' }); $('msgEspaco').textContent = `${j.apagados} arquivo(s) apagados.`; $('msgEspaco').className = 'msg ok'; }
+    catch (e) { $('msgEspaco').textContent = e.message; $('msgEspaco').className = 'msg err'; }
+    await carregarEspaco();
+  };
+  async function arquivar(mesId, botao) {
+    if (!confirm('Arquivar este mês tira as artes do servidor e fecha o link do cliente. O post, o tema, a legenda e o histórico continuam no painel. Confirmar?')) return;
+    botao.disabled = true; $('msgEspaco').textContent = 'Arquivando…'; $('msgEspaco').className = 'msg';
+    try {
+      const j = await chamarLimpeza({ acao: 'arquivar', mes_id: mesId, dias: +$('diasArquivo').value || 90 });
+      $('msgEspaco').textContent = `Mês arquivado. ${j.apagados} arquivo(s) saíram do servidor.`; $('msgEspaco').className = 'msg ok';
+    } catch (e) { $('msgEspaco').textContent = e.message; $('msgEspaco').className = 'msg err'; }
+    await carregarEspaco();
+    if (cliente) await selectCliente(cliente.id);
+  }
 
   /* ---------- importar a pasta do mês ---------- */
   let importPosts = [];

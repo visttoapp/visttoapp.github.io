@@ -8,9 +8,9 @@
 <link rel="icon" href="assets/vistto.svg" type="image/svg+xml">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Cormorant+Garamond:wght@500&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/style.css?v=20260917i"><link rel="stylesheet" href="css/agencies.css?v=20260917i">
+<link rel="stylesheet" href="css/style.css?v=20260918a"><link rel="stylesheet" href="css/agencies.css?v=20260918a">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="js/config.js?v=20260917i"></script>
+<script src="js/config.js?v=20260918a"></script>
 </head>
 <body class="admin" data-tema="neutro"><script>if (new URLSearchParams(location.search).has("t") || new URLSearchParams(location.hash.slice(1)).has("t")) location.replace("c" + location.search + location.hash);</script>
 
@@ -57,6 +57,7 @@
     </div>
 
     <div class="side-section">
+      <button class="nav-item" id="btnEspaco" hidden><svg class="i" viewBox="0 0 16 16"><path d="M2.5 4.5c0-1.1 2.5-2 5.5-2s5.5.9 5.5 2v7c0 1.1-2.5 2-5.5 2s-5.5-.9-5.5-2z"/><path d="M2.5 8c0 1.1 2.5 2 5.5 2s5.5-.9 5.5-2"/></svg>Espaço e limpeza</button>
       <button class="nav-item" id="btnAccess" hidden><svg class="i" viewBox="0 0 16 16"><circle cx="6" cy="5.5" r="2.5"/><path d="M1.5 13.5c.6-2.3 2.3-3.5 4.5-3.5s3.9 1.2 4.5 3.5M11 3.2a2.5 2.5 0 0 1 0 4.6M12.5 10.3c1 .5 1.7 1.6 2 3.2"/></svg>Gerenciar equipe</button>
     </div>
 
@@ -69,6 +70,7 @@
 
   <main class="main">
     <div class="wrap">
+      <div class="aviso" id="avisoEspaco" hidden></div>
       <div class="page-head">
         <div><span class="eyebrow">Aprovação de conteúdo</span><h2 id="titulo">—</h2></div>
         <div class="actions">
@@ -140,6 +142,19 @@
         <div class="msg" id="msgMes"></div>
       </div>
 
+      <!-- ESPAÇO -->
+      <div class="card" id="cardEspaco" hidden>
+        <div class="card-head"><div><h4>Espaço e limpeza</h4><p>O plano atual do servidor guarda 1 GB de artes. Aqui você vê o quanto está em uso, apaga o que não está em nenhum post e tira do servidor as artes de meses antigos.</p></div><button class="btn sm" id="btnFecharEspaco">Voltar aos posts</button></div>
+        <div class="barra"><span id="barraUso"></span></div>
+        <div class="summary" id="usoResumo"></div>
+        <div class="actions">
+          <button class="btn" id="btnOrfaos">Apagar arquivos sem dono</button>
+          <div class="field inline"><label class="label" for="diasArquivo">Arquivar meses com mais de</label><select id="diasArquivo"><option value="60">60 dias</option><option value="90" selected>90 dias</option><option value="180">180 dias</option><option value="365">1 ano</option></select></div>
+        </div>
+        <div id="mesesAntigos"></div>
+        <div class="msg" id="msgEspaco" role="status"></div>
+      </div>
+
       <!-- IMPORTAR PASTA -->
       <div class="card" id="cardImport" hidden>
         <div class="card-head"><div><h4>Importar a pasta do mês</h4><p>Escolha a pasta do mês no seu computador. Pasta com várias artes vira carrossel na ordem dos nomes, arte solta vira post, .mp4 vira reel. Só a ordem e o número vêm do nome: data, tema e legenda você preenche depois.</p></div></div>
@@ -199,6 +214,6 @@
   </main>
 </div>
 
-<script src="js/brand.js?v=20260917i"></script><script src="js/media.js?v=20260917i"></script><script src="js/importar.js?v=20260917i"></script><script src="js/admin.js?v=20260917i"></script>
+<script src="js/brand.js?v=20260918a"></script><script src="js/media.js?v=20260918a"></script><script src="js/importar.js?v=20260918a"></script><script src="js/admin.js?v=20260918a"></script>
 </body>
 </html>
