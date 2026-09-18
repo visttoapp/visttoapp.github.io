@@ -14,9 +14,25 @@ Deno.serve(async req=>{
     if(error)throw error;
     if(!data)return reply(null);
     const cache=new Map<string,Promise<string>>();
+    // Arte no Cloudflare R2: o link é assinado aqui e o Worker só entrega com essa assinatura.
+    const hex=(b:ArrayBuffer)=>[...new Uint8Array(b)].map(x=>x.toString(16).padStart(2,'0')).join('');
+    const base=(Deno.env.get('R2_BASE')||'https://vistto-midia.felipelabmor.workers.dev').replace(/\/+$/,'');
+    async function linkR2(caminho:string) {
+      const segredo=Deno.env.get('SIGN_SECRET');
+      if(!segredo)throw new Error('sem segredo');
+      const exp=Math.floor(Date.now()/1000)+3600;
+      const chave=await crypto.subtle.importKey('raw',new TextEncoder().encode(segredo),{name:'HMAC',hash:'SHA-256'},false,['sign']);
+      const sig=hex(await crypto.subtle.sign('HMAC',chave,new TextEncoder().encode(`GET:${caminho}:${exp}`)));
+      return `${base}/m/${caminho.split('/').map(encodeURIComponent).join('/')}?exp=${exp}&sig=${sig}`;
+    }
     async function signed(v:string|null) {
       if(!v)return v;
       let path:string;
+      if(v.startsWith('r2:')) {
+        const c=v.slice(3);
+        if(!cache.has(v))cache.set(v,linkR2(c));
+        return cache.get(v)!;
+      }
       if(v.startsWith('midia:'))path=v.slice(6);
       else if(v.startsWith(url+'/storage/v1/object/public/midia/'))path=decodeURIComponent(v.split('/storage/v1/object/public/midia/')[1]);
       else return v;

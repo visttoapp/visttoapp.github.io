@@ -24,15 +24,34 @@ Deno.serve(async req=>{
   const {data:plano,error:planoError}=await comoUsuario.rpc('plano_limpeza',{p_agencia:agencia_id,p_dias:prazo});
   if(planoError)return reply({error:planoError.message},403);
 
-  const apagar=async(caminhos:string[])=>{
-   const limpos=[...new Set(caminhos.filter(c=>typeof c==='string'&&c.startsWith(agencia_id+'/')))];
+  // Apaga no Storage do Supabase ('midia:' e caminhos antigos) e no R2 ('r2:'), cada um pela sua porta.
+  const hex=(b:ArrayBuffer)=>[...new Uint8Array(b)].map(x=>x.toString(16).padStart(2,'0')).join('');
+  const base=(Deno.env.get('R2_BASE')||'https://vistto-midia.felipelabmor.workers.dev').replace(/\/+$/,'');
+  const apagarR2=async(caminho:string)=>{
+   const segredo=Deno.env.get('SIGN_SECRET');
+   if(!segredo)throw new Error('Servidor sem segredo configurado.');
+   const exp=Math.floor(Date.now()/1000)+300;
+   const chave=await crypto.subtle.importKey('raw',new TextEncoder().encode(segredo),{name:'HMAC',hash:'SHA-256'},false,['sign']);
+   const sig=hex(await crypto.subtle.sign('HMAC',chave,new TextEncoder().encode(`DELETE:${caminho}:${exp}`)));
+   const r=await fetch(`${base}/m/${caminho.split('/').map(encodeURIComponent).join('/')}?exp=${exp}&sig=${sig}`,{method:'DELETE'});
+   if(!r.ok)throw new Error('Não foi possível apagar uma arte no R2.');
+  };
+  const apagar=async(itens:string[])=>{
+   const limpa=(x:string)=>x.startsWith('r2:')?x.slice(3):x.startsWith('midia:')?x.slice(6):x;
+   const r2:string[]=[],storage:string[]=[];
+   for(const item of [...new Set(itens.filter(x=>typeof x==='string'))]){
+    const caminho=limpa(item);
+    if(!caminho.startsWith(agencia_id+'/'))continue;
+    (item.startsWith('r2:')?r2:storage).push(caminho);
+   }
    let apagados=0;
-   for(let i=0;i<limpos.length;i+=100){
-    const lote=limpos.slice(i,i+100);
+   for(let i=0;i<storage.length;i+=100){
+    const lote=storage.slice(i,i+100);
     const {error}=await servico.storage.from('midia').remove(lote);
     if(error)throw new Error(error.message);
     apagados+=lote.length;
    }
+   for(const caminho of r2){ await apagarR2(caminho); apagados++; }
    return apagados;
   };
 

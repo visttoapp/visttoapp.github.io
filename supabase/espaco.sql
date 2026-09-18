@@ -16,11 +16,12 @@ create function public.midia_refs() returns table(path text) language sql stable
  ) x where v is not null and v <> '' and public.midia_path(v) is not null and public.midia_path(v) <> '';
 $$;
 
--- Quanto a agência ocupa, quanto é lixo e quantos meses já passaram do prazo.
+-- Quanto a agência ocupa, quanto é lixo e quantos meses já passaram do prazo. Só o administrador geral,
+-- porque a conta mostra o total do servidor e revelaria a existência da outra agência.
 create function public.uso_armazenamento(p_agencia uuid, p_dias int default 90) returns jsonb language plpgsql stable security definer set search_path='' as $$
 declare r jsonb;
 begin
- if public.meu_nivel(p_agencia) < 3 then raise exception 'Acesso negado'; end if;
+ if not public.e_admin() then raise exception 'Acesso negado'; end if;
  select jsonb_build_object(
    'arquivos', count(*), 'bytes', coalesce(sum(tam),0),
    'orfaos', count(*) filter (where orfao), 'bytes_orfaos', coalesce(sum(tam) filter (where orfao),0),
@@ -42,7 +43,7 @@ end $$;
 create function public.plano_limpeza(p_agencia uuid, p_dias int default 90) returns jsonb language plpgsql stable security definer set search_path='' as $$
 declare r jsonb;
 begin
- if public.meu_nivel(p_agencia) < 3 then raise exception 'Acesso negado'; end if;
+ if not public.e_admin() then raise exception 'Acesso negado'; end if;
  select jsonb_build_object(
    'orfaos', coalesce((select jsonb_agg(o.name) from storage.objects o
       where o.bucket_id='midia' and split_part(o.name,'/',1)=p_agencia::text
@@ -66,7 +67,7 @@ create function public.arquivar_mes(p_mes uuid) returns void language plpgsql se
 declare c uuid;
 begin
  select cliente_id into c from public.meses where id=p_mes;
- if c is null or public.meu_nivel((select agencia_id from public.clientes where id=c)) < 3 then raise exception 'Acesso negado'; end if;
+ if c is null or not public.e_admin() then raise exception 'Acesso negado'; end if;
  update public.posts set slides='[]'::jsonb, capa_url=null, video_url=null where mes_id=p_mes;
  update public.meses set publicado=false, arquivado_em=now() where id=p_mes;
 end $$;

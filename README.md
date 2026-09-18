@@ -57,8 +57,13 @@ Do nome saem só o número (`01`, `1.`, `01 -`) e a ordem; o resto do nome entra
 ## Baixar os originais
 Na lista de posts, **baixar** entrega os arquivos exatamente como foram enviados, sem compressão: imagem única sai como arquivo, carrossel sai em .zip com as lâminas numeradas na ordem, reel sai com vídeo e capa. Quem enxerga o post pode baixar. O .zip é montado no navegador com o JSZip (`js/vendor`, licença MIT).
 
+## Onde as artes ficam
+As artes novas vão para um bucket privado no **Cloudflare R2** (10 GB no plano gratuito, sem cobrança de tráfego) e são guardadas como `r2:<agencia>/<arquivo>`. As antigas (`midia:...` e URLs públicas antigas) continuam no Storage do Supabase e seguem funcionando. Texto, logins e aprovações ficam todos no Supabase.
+
+O bucket é fechado. Quem serve os arquivos é o Worker em `worker/index.js` (`wrangler.jsonc`, deploy pelo próprio GitHub a cada push), que só aceita link assinado com HMAC-SHA256, válido por uma hora, para um caminho e um método só. Quem assina é o Supabase: a função `midia` (ler e enviar, conferindo `pode_ref` e `pode_enviar` com o token de quem pediu), a função `cliente` (prévia do cliente) e a função `limpeza` (apagar). O segredo `SIGN_SECRET` fica nos dois lados, Worker e Supabase, e nunca no repositório.
+
 ## Espaço e limpeza
-O plano atual do Supabase guarda 1 GB de arquivos, com no máximo 50 MB por arquivo, e 5 GB de tráfego por mês. Em **Espaço e limpeza** (só dono, sócio e administrador geral) o painel mostra o uso, quantos arquivos não estão em nenhum post e quantos meses passaram do prazo. Acima de 80% aparece um aviso no topo do painel.
+O plano atual do Supabase guarda 1 GB de arquivos, com no máximo 50 MB por arquivo, e 5 GB de tráfego por mês. Em **Espaço e limpeza** (só o administrador geral, porque a conta mostra o total do servidor) o painel mostra o uso, quantos arquivos não estão em nenhum post e quantos meses passaram do prazo. Acima de 80% aparece um aviso no topo do painel. A conta cobre o Storage do Supabase; o R2 tem dez vezes mais espaço e é acompanhado no painel da Cloudflare.
 
 Duas ações: **apagar arquivos sem dono** remove do servidor o que nenhum post, cliente ou destaque referencia (arquivos da lista `midia_legada` nunca saem), e **arquivar mês** limpa as artes daquele mês, fecha o link do cliente e mantém post, tema, legenda e histórico de aprovação. As duas passam pela função `limpeza`, que confere o nível pelas funções `plano_limpeza` e `arquivar_mes` com o token de quem clicou. Não existe rotina automática: alguém precisa clicar.
 
@@ -70,7 +75,7 @@ Duas ações: **apagar arquivos sem dono** remove do servidor o que nenhum post,
 - A função `acessos` valida a sessão e o nível de quem cadastra antes de criar a conta. Ambas usam `verify_jwt=false` (ver `supabase/config.toml`); a chave privilegiada fica só no servidor.
 
 ### Banco
-No projeto em uso, `multi-agencias.sql`, `hierarquia.sql`, `squads.sql`, `convites.sql`, `divisoes.sql`, `gestores.sql` e `espaco.sql` já foram aplicadas. **Não execute de novo.** `schema.sql` é a instalação completa para um banco novo.
+No projeto em uso, `multi-agencias.sql`, `hierarquia.sql`, `squads.sql`, `convites.sql`, `divisoes.sql`, `gestores.sql`, `espaco.sql` e `r2.sql` já foram aplicadas. **Não execute de novo.** `schema.sql` é a instalação completa para um banco novo.
 
 Instalação nova: execute `schema.sql`, crie a primeira conta no Supabase Auth, cadastre o UUID em `administradores`, ajuste os nomes em `agencias`, configure `js/config.js` com a URL e a publishable key, publique as funções `cliente`, `acessos` e `primeiro-acesso` e configure a URL do site no Auth.
 

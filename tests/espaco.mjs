@@ -14,7 +14,7 @@ create function public.gen_random_bytes(n integer) returns bytea language sql as
 create function extensions.gen_random_bytes(n integer) returns bytea language sql as $$select public.gen_random_bytes(n) $$;`);
 const rd = f => fs.readFileSync(new URL(f, import.meta.url), 'utf8');
 await db.exec(rd('./fixtures/schema-v1.sql').replace('create extension if not exists pgcrypto;', ''));
-for (const f of ['multi-agencias', 'hierarquia', 'squads', 'convites', 'divisoes', 'gestores', 'espaco']) await db.exec(rd(`../supabase/${f}.sql`));
+for (const f of ['multi-agencias', 'hierarquia', 'squads', 'convites', 'divisoes', 'gestores', 'espaco', 'r2']) await db.exec(rd(`../supabase/${f}.sql`));
 
 const A = { a: '10000000-0000-4000-8000-000000000001', b: '10000000-0000-4000-8000-000000000002' };
 const P = { admin: null, dono: ['b', 'dono'], head: ['b', 'head'], des: ['b', 'designer'], donoA: ['a', 'dono'] };
@@ -38,35 +38,35 @@ await q(`insert into storage.objects(bucket_id,name,metadata) values('midia',$1,
 await q(`insert into midia_legada values($1,$2)`, [`${A.b}/legado.jpg`, A.b]);
 await q(`insert into storage.objects(bucket_id,name,metadata) values('midia',$1,$2)`, [`${A.a}/outra.jpg`, JSON.stringify({ size: 9 * 1024 * 1024 })]);
 
-// uso: só dono, sócio e admin
+// uso: só o administrador geral (a conta mostra o servidor inteiro)
 const uso = async who => (await as(who, () => rows('select uso_armazenamento($1) u', [A.b])))[0].u;
-let u = await uso('dono');
+let u = await uso('admin');
 assert.equal(u.arquivos, 7); ok();
 assert.equal(u.bytes, (300 + 300 + 500 + 100 + 50 + 700 + 1) * 1024); ok();
 assert.equal(u.orfaos, 1); ok();
 assert.equal(u.bytes_orfaos, 700 * 1024); ok();
 assert.equal(u.meses_antigos, 1); ok();
 assert.equal(u.bytes_bucket, u.bytes + 9 * 1024 * 1024); ok();
-await as('head', async () => { await assert.rejects(q('select uso_armazenamento($1)', [A.b])); ok(); });
-await as('des', async () => { await assert.rejects(q('select plano_limpeza($1)', [A.b])); ok(); });
-await as('donoA', async () => { await assert.rejects(q('select uso_armazenamento($1)', [A.b])); ok(); });
-assert.equal((await as('admin', () => rows('select uso_armazenamento($1) u', [A.b])))[0].u.arquivos, 7); ok();
+for (const w of ['dono', 'head', 'des', 'donoA']) await as(w, async () => {
+  await assert.rejects(q('select uso_armazenamento($1)', [A.b]), undefined, w); ok();
+  await assert.rejects(q('select plano_limpeza($1)', [A.b]), undefined, w); ok();
+});
 // prazo configurável
-assert.equal((await as('dono', () => rows('select uso_armazenamento($1,$2) u', [A.b, 365])))[0].u.meses_antigos, 0); ok();
+assert.equal((await as('admin', () => rows('select uso_armazenamento($1,$2) u', [A.b, 365])))[0].u.meses_antigos, 0); ok();
 
 // plano: órfão sim, legado não
 const plano = async (who, dias) => (await as(who, () => rows('select plano_limpeza($1,$2) p', [A.b, dias ?? 90])))[0].p;
-let pl = await plano('dono');
+let pl = await plano('admin');
 assert.deepEqual(pl.orfaos, [`${A.b}/solto.jpg`]); ok();
 assert.equal(pl.meses.length, 1); ok();
 assert.equal(pl.meses[0].titulo, 'Jan'); ok();
 assert.equal(pl.meses[0].cliente, 'c1'); ok();
-assert.deepEqual([...pl.meses[0].arquivos].sort(), [`${A.b}/velho1.jpg`, `${A.b}/velhocapa.jpg`]); ok();
-assert.equal((await plano('dono', 365)).meses.length, 0); ok();
+assert.deepEqual([...pl.meses[0].arquivos].sort(), [`midia:${A.b}/velho1.jpg`, `midia:${A.b}/velhocapa.jpg`]); ok();
+assert.equal((await plano('admin', 365)).meses.length, 0); ok();
 
 // arquivar: limpa as artes do mês, fecha o link e mantém o post
-await as('head', async () => { await assert.rejects(q('select arquivar_mes($1)', [mVelho])); ok(); });
-await as('dono', async () => { await q('select arquivar_mes($1)', [mVelho]); ok(); });
+for (const w of ['head', 'dono']) await as(w, async () => { await assert.rejects(q('select arquivar_mes($1)', [mVelho])); ok(); });
+await as('admin', async () => { await q('select arquivar_mes($1)', [mVelho]); ok(); });
 const velho = (await rows('select publicado, arquivado_em is not null arq from meses where id=$1', [mVelho]))[0];
 assert.equal(velho.publicado, false); ok();
 assert.equal(velho.arq, true); ok();
@@ -78,14 +78,14 @@ assert.equal(post.capa_url, null); ok();
 assert.equal((await rows('select publicado from meses where id=$1', [mNovo]))[0].publicado, true); ok();
 assert.equal((await rows(`select jsonb_array_length(slides) n from posts where mes_id=$1`, [mNovo]))[0].n, 2); ok();
 // depois de arquivar, as artes do mês entram na lista de sem dono
-pl = await plano('dono');
+pl = await plano('admin');
 assert.deepEqual([...pl.orfaos].sort(), [`${A.b}/solto.jpg`, `${A.b}/velho1.jpg`, `${A.b}/velhocapa.jpg`].sort()); ok();
 assert.equal(pl.meses.length, 0); ok();
-u = await uso('dono');
+u = await uso('admin');
 assert.equal(u.orfaos, 3); ok();
 assert.equal(u.bytes_orfaos, (700 + 500 + 100) * 1024); ok();
 // arquivar de novo não faz nada de novo
-await as('dono', async () => { await q('select arquivar_mes($1)', [mVelho]); ok(); });
+await as('admin', async () => { await q('select arquivar_mes($1)', [mVelho]); ok(); });
 assert.equal((await rows('select count(*)::int n from meses where arquivado_em is not null'))[0].n, 1); ok();
 // anônimo não chega perto
 await db.exec('set role anon');
@@ -94,5 +94,5 @@ await assert.rejects(q('select plano_limpeza($1)', [A.b])); ok();
 await assert.rejects(q('select arquivar_mes($1)', [mNovo])); ok();
 await db.exec('reset role');
 
-console.log('PASS:', checks, 'checks de espaço: uso por agência, arquivos sem dono, legado protegido, arquivamento de mês antigo.');
+console.log('PASS:', checks, 'checks de espaço: só administrador geral, arquivos sem dono, legado protegido, arquivamento de mês antigo.');
 await db.close();

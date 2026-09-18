@@ -125,7 +125,7 @@
     $('cSquad').innerHTML=(nivel>=3?'<option value="">Sem squad (só donos e sócios veem)</option>':'')+squadOpts;
     $('accessSquad').innerHTML=(nivel>=3?'<option value="">Sem squad</option>':'')+squadOpts;
     $('accessSquad').closest('.field').hidden=!agencia.usa_squads||(nivel<3&&!squads.length);
-    $('btnAccess').hidden=nivel<2; $('btnEspaco').hidden=nivel<3; $('btnNovoCliente').hidden=nivel<2||(nivel<3&&agencia.usa_squads&&!squads.length); $('cardLink').hidden=nivel<2;
+    $('btnAccess').hidden=nivel<2; $('btnEspaco').hidden=!superadmin; $('btnNovoCliente').hidden=nivel<2||(nivel<3&&agencia.usa_squads&&!squads.length); $('cardLink').hidden=nivel<2;
     const comSquads=!!agencia.usa_squads;
     $('squadsBox').hidden=nivel<3||!comSquads;
     $('cSquad').closest('.field').hidden=!comSquads;
@@ -404,15 +404,32 @@
   };
 
   /* ---------- upload ---------- */
+  // As artes novas vão para o depósito na Cloudflare (10 GB). As antigas seguem no Supabase.
   async function upload(file, folder) {
-    if(!file)return null;
+    if (!file) return null;
     const ext = (file.name.split('.').pop() || 'jpg').toLowerCase();
-    if (!file || !/^image\/(jpeg|png|webp|gif)$|^video\/mp4$/.test(file.type)) { alert('Use JPG, PNG, WebP, GIF ou MP4.'); return null; }
-    if(file.size>50*1024*1024) {alert('O limite é 50 MB por arquivo.');return null;}
-    const path = `${agencia.id}/${crypto.randomUUID()}.${ext}`;
-    const { error } = await sb.storage.from('midia').upload(path, file, { cacheControl: '31536000', upsert: false });
-    if (error) { alert('Upload falhou: ' + error.message); return null; }
-    const ref='midia:'+path; await MEDIA.prepare(sb,[ref]); return ref;
+    if (!/^image\/(jpeg|png|webp|gif)$|^video\/mp4$/.test(file.type)) { alert('Use JPG, PNG, WebP, GIF ou MP4.'); return null; }
+    if (file.size > 50 * 1024 * 1024) { alert('O limite é 50 MB por arquivo.'); return null; }
+    try {
+      const { data: { session } } = await sb.auth.getSession();
+      const pedido = await fetch(cfg.SUPABASE_URL + '/functions/v1/midia', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', apikey: cfg.SUPABASE_ANON_KEY, Authorization: `Bearer ${session?.access_token || ''}` },
+        body: JSON.stringify({ acao: 'enviar', agencia_id: agencia.id, ext })
+      });
+      const j = await pedido.json().catch(() => ({}));
+      if (!pedido.ok || j.error || !j.envio) throw new Error(j.error || 'Não foi possível preparar o envio.');
+      const envio = await fetch(j.envio, { method: 'PUT', headers: { 'Content-Type': file.type }, body: file });
+      if (!envio.ok) {
+        const detalhe = await envio.json().catch(() => ({}));
+        throw new Error(detalhe.error || `O arquivo não subiu (${envio.status}).`);
+      }
+      MEDIA.guardar(j.ref, j.leitura);
+      return j.ref;
+    } catch (e) {
+      alert('Upload falhou: ' + (e.message || 'tente de novo.'));
+      return null;
+    }
   }
   function dropzone(el, onFiles) {
     let busy=false;
@@ -487,7 +504,7 @@
   $('btnFecharEspaco').onclick = () => verEspaco(false);
   $('diasArquivo').onchange = () => carregarEspaco();
   async function medirEspaco() {
-    if (nivel < 3) { uso = null; return null; }
+    if (!superadmin) { uso = null; $('avisoEspaco').hidden = true; return null; }
     try { uso = await run(sb.rpc('uso_armazenamento', { p_agencia: agencia.id, p_dias: +$('diasArquivo').value || 90 })); }
     catch { uso = null; }
     const cheio = uso ? uso.bytes_bucket / LIMITE : 0;
