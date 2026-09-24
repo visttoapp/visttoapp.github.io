@@ -19,23 +19,43 @@ Deno.serve(async req=>{
   const {acao,agencia_id,dias,mes_id}=await req.json();
   if(typeof agencia_id!=='string'||!UUID.test(agencia_id))return reply({error:'Agência inválida.'},400);
   const prazo=Number.isFinite(dias)?Math.max(30,Math.min(3650,Math.trunc(dias))):90;
-  if(acao!=='orfaos'&&acao!=='arquivar')return reply({error:'Ação inválida.'},400);
+  if(acao!=='orfaos'&&acao!=='arquivar'&&acao!=='uso')return reply({error:'Ação inválida.'},400);
 
-  const {data:plano,error:planoError}=await comoUsuario.rpc('plano_limpeza',{p_agencia:agencia_id,p_dias:prazo});
-  if(planoError)return reply({error:planoError.message},403);
-
-  // Apaga no Storage do Supabase ('midia:' e caminhos antigos) e no R2 ('r2:'), cada um pela sua porta.
+  // Assinatura curta para falar com o Worker do R2.
   const hex=(b:ArrayBuffer)=>[...new Uint8Array(b)].map(x=>x.toString(16).padStart(2,'0')).join('');
   const base=(Deno.env.get('R2_BASE')||'https://vistto-midia.felipelabmor.workers.dev').replace(/\/+$/,'');
-  const apagarR2=async(caminho:string)=>{
+  const assinar=async(metodo:string,alvo:string,exp:number)=>{
    const segredo=Deno.env.get('SIGN_SECRET');
    if(!segredo)throw new Error('Servidor sem segredo configurado.');
-   const exp=Math.floor(Date.now()/1000)+300;
    const chave=await crypto.subtle.importKey('raw',new TextEncoder().encode(segredo),{name:'HMAC',hash:'SHA-256'},false,['sign']);
-   const sig=hex(await crypto.subtle.sign('HMAC',chave,new TextEncoder().encode(`DELETE:${caminho}:${exp}`)));
+   return hex(await crypto.subtle.sign('HMAC',chave,new TextEncoder().encode(`${metodo}:${alvo}:${exp}`)));
+  };
+  const inventarioR2=async(detalhe=false)=>{
+   const prefixo=agencia_id+'/';
+   const exp=Math.floor(Date.now()/1000)+120;
+   const sig=await assinar('LISTA',prefixo,exp);
+   const r=await fetch(`${base}/lista?prefixo=${encodeURIComponent(prefixo)}&exp=${exp}&sig=${sig}${detalhe?'&detalhe=1':''}`);
+   if(!r.ok)throw new Error('Não foi possível ler o depósito da Cloudflare.');
+   return await r.json() as {arquivos:number;bytes:number;truncado:boolean;nomes?:string[]};
+  };
+  const apagarR2=async(caminho:string)=>{
+   const exp=Math.floor(Date.now()/1000)+300;
+   const sig=await assinar('DELETE',caminho,exp);
    const r=await fetch(`${base}/m/${caminho.split('/').map(encodeURIComponent).join('/')}?exp=${exp}&sig=${sig}`,{method:'DELETE'});
    if(!r.ok)throw new Error('Não foi possível apagar uma arte no R2.');
   };
+
+  // Quanto está guardado de cada lado. A conferência de nível fica no banco.
+  if(acao==='uso'){
+   const {data:uso,error:usoError}=await comoUsuario.rpc('uso_armazenamento',{p_agencia:agencia_id,p_dias:prazo});
+   if(usoError)return reply({error:usoError.message},403);
+   let r2:{arquivos:number;bytes:number;truncado:boolean}|null=null;
+   try{ const inv=await inventarioR2(); r2={arquivos:inv.arquivos,bytes:inv.bytes,truncado:inv.truncado}; }catch{ r2=null; }
+   return reply({ok:true,supabase:uso,r2});
+  }
+
+  const {data:plano,error:planoError}=await comoUsuario.rpc('plano_limpeza',{p_agencia:agencia_id,p_dias:prazo});
+  if(planoError)return reply({error:planoError.message},403);
   const apagar=async(itens:string[])=>{
    const limpa=(x:string)=>x.startsWith('r2:')?x.slice(3):x.startsWith('midia:')?x.slice(6):x;
    const r2:string[]=[],storage:string[]=[];
@@ -56,8 +76,15 @@ Deno.serve(async req=>{
   };
 
   if(acao==='orfaos'){
-   const apagados=await apagar(plano.orfaos||[]);
-   return reply({ok:true,apagados});
+   // Supabase: o banco já sabe o que sobrou. R2: comparo o que está lá com o que os posts citam.
+   let apagados=await apagar(plano.orfaos||[]);
+   const {data:usadas,error:refsError}=await comoUsuario.rpc('refs_r2',{p_agencia:agencia_id});
+   if(refsError)return reply({error:refsError.message,apagados},403);
+   const conhecidas=new Set((usadas||[]) as string[]);
+   const inv=await inventarioR2(true);
+   const sobrando=(inv.nomes||[]).filter(n=>!conhecidas.has(n));
+   for(const caminho of sobrando){ await apagarR2(caminho); apagados++; }
+   return reply({ok:true,apagados,truncado:inv.truncado});
   }
 
   // arquivar: um mês por chamada quando mes_id vem, senão todos os vencidos

@@ -491,9 +491,10 @@
   };
 
   /* ---------- espaço e limpeza ---------- */
-  const LIMITE = 1024 * 1024 * 1024; // 1 GB do plano atual do servidor
+  const LIMITE_SUPA = 1024 * 1024 * 1024;        // 1 GB do armazenamento antigo (Supabase)
+  const LIMITE_R2 = 10 * 1024 * 1024 * 1024;     // 10 GB do depósito das artes novas (Cloudflare)
   const mb = b => b >= 1024 * 1024 * 1024 ? (b / 1024 / 1024 / 1024).toFixed(2) + ' GB' : Math.round(b / 1024 / 1024) + ' MB';
-  let uso = null;
+  let uso = null, usoR2 = null;
   function verEspaco(abrir) {
     $('cardEspaco').hidden = !abrir;
     document.body.classList.toggle('vendo-espaco', abrir);
@@ -504,27 +505,38 @@
   $('btnFecharEspaco').onclick = () => verEspaco(false);
   $('diasArquivo').onchange = () => carregarEspaco();
   async function medirEspaco() {
-    if (!superadmin) { uso = null; $('avisoEspaco').hidden = true; return null; }
-    try { uso = await run(sb.rpc('uso_armazenamento', { p_agencia: agencia.id, p_dias: +$('diasArquivo').value || 90 })); }
-    catch { uso = null; }
-    const cheio = uso ? uso.bytes_bucket / LIMITE : 0;
-    $('avisoEspaco').hidden = !uso || cheio < 0.8;
-    if (uso && cheio >= 0.8) $('avisoEspaco').innerHTML = `O servidor está com <b>${mb(uso.bytes_bucket)} de 1 GB</b> em uso. Abra <b>Espaço e limpeza</b> para liberar espaço antes que os envios comecem a falhar.`;
+    if (!superadmin) { uso = null; usoR2 = null; $('avisoEspaco').hidden = true; return null; }
+    try {
+      const j = await chamarLimpeza({ acao: 'uso', dias: +$('diasArquivo').value || 90 });
+      uso = j.supabase; usoR2 = j.r2 || null;
+    } catch { uso = null; usoR2 = null; }
+    const cheioR2 = usoR2 ? usoR2.bytes / LIMITE_R2 : 0;
+    const cheioSupa = uso ? uso.bytes_bucket / LIMITE_SUPA : 0;
+    const apertado = cheioR2 >= 0.8 || cheioSupa >= 0.8;
+    $('avisoEspaco').hidden = !apertado;
+    if (apertado) $('avisoEspaco').innerHTML = cheioR2 >= 0.8
+      ? `As artes estão ocupando <b>${mb(usoR2.bytes)} de 10 GB</b>. Abra <b>Espaço e limpeza</b> para arquivar meses antigos.`
+      : `O armazenamento antigo está com <b>${mb(uso.bytes_bucket)} de 1 GB</b>. Abra <b>Espaço e limpeza</b> e arquive os meses vencidos.`;
     return uso;
   }
   async function carregarEspaco() {
     $('msgEspaco').textContent = 'Conferindo…'; $('msgEspaco').className = 'msg';
     const u = await medirEspaco();
     if (!u) { $('msgEspaco').textContent = 'Não foi possível medir o espaço agora.'; $('msgEspaco').className = 'msg err'; return; }
-    const pct = Math.min(100, Math.round(u.bytes_bucket / LIMITE * 100));
-    $('barraUso').style.width = pct + '%';
-    $('barraUso').className = pct >= 80 ? 'cheio' : pct >= 60 ? 'meio' : '';
-    $('usoResumo').innerHTML = `<div><b>${mb(u.bytes_bucket)}</b><span>de 1 GB no servidor (${pct}%)</span></div>`
-      + `<div><b>${mb(u.bytes)}</b><span>desta agência · ${u.arquivos} arquivo(s)</span></div>`
-      + `<div><b>${mb(u.bytes_orfaos)}</b><span>${u.orfaos} arquivo(s) sem dono</span></div>`
+    const pctR2 = usoR2 ? Math.min(100, Math.round(usoR2.bytes / LIMITE_R2 * 100)) : 0;
+    const pctSupa = Math.min(100, Math.round(u.bytes_bucket / LIMITE_SUPA * 100));
+    $('barraUso').style.width = (usoR2 ? pctR2 : pctSupa) + '%';
+    $('barraUso').className = (usoR2 ? pctR2 : pctSupa) >= 80 ? 'cheio' : (usoR2 ? pctR2 : pctSupa) >= 60 ? 'meio' : '';
+    $('usoResumo').innerHTML = (usoR2
+        ? `<div><b>${mb(usoR2.bytes)}</b><span>de 10 GB nas artes novas (${pctR2}%) · ${usoR2.arquivos} arquivo(s)</span></div>`
+        : `<div><b>—</b><span>não consegui ler o depósito das artes novas</span></div>`)
+      + `<div><b>${mb(u.bytes_bucket)}</b><span>de 1 GB no armazenamento antigo (${pctSupa}%)</span></div>`
+      + `<div><b>${mb(u.bytes_orfaos)}</b><span>${u.orfaos} arquivo(s) antigos sem dono</span></div>`
       + `<div><b>${u.meses_antigos}</b><span>mês(es) fora do prazo</span></div>`;
-    $('btnOrfaos').disabled = !u.orfaos;
-    $('btnOrfaos').textContent = u.orfaos ? `Apagar ${u.orfaos} arquivo(s) sem dono (${mb(u.bytes_orfaos)})` : 'Nenhum arquivo sem dono';
+    $('btnOrfaos').disabled = false;
+    $('btnOrfaos').textContent = u.orfaos
+      ? `Procurar e apagar arquivos sem dono (${u.orfaos} antigo(s), ${mb(u.bytes_orfaos)})`
+      : 'Procurar e apagar arquivos sem dono';
     let plano = { meses: [] };
     try { plano = await run(sb.rpc('plano_limpeza', { p_agencia: agencia.id, p_dias: +$('diasArquivo').value || 90 })); } catch {}
     $('mesesAntigos').innerHTML = plano.meses.length
@@ -545,15 +557,14 @@
     return j;
   }
   $('btnOrfaos').onclick = async () => {
-    if (!uso?.orfaos) return;
-    if (!confirm(`Apagar ${uso.orfaos} arquivo(s) que não estão em nenhum post e liberar ${mb(uso.bytes_orfaos)}? Não dá para desfazer.`)) return;
+    if (!confirm('Vou procurar, nos dois lugares, arquivos que não estão em nenhum post, e apagar o que achar. Não dá para desfazer. Confirmar?')) return;
     $('btnOrfaos').disabled = true; $('msgEspaco').textContent = 'Apagando…'; $('msgEspaco').className = 'msg';
     try { const j = await chamarLimpeza({ acao: 'orfaos' }); $('msgEspaco').textContent = `${j.apagados} arquivo(s) apagados.`; $('msgEspaco').className = 'msg ok'; }
     catch (e) { $('msgEspaco').textContent = e.message; $('msgEspaco').className = 'msg err'; }
     await carregarEspaco();
   };
   async function arquivar(mesId, botao) {
-    if (!confirm('Arquivar este mês tira as artes do servidor e fecha o link do cliente. O post, o tema, a legenda e o histórico continuam no painel. Confirmar?')) return;
+    if (!confirm('Arquivar apaga as artes deste mês para sempre, dos dois lugares, e fecha o link do cliente. Não dá para desfazer, e o original precisa estar guardado com você. O post, o tema, a legenda e o histórico continuam no painel. Confirmar?')) return;
     botao.disabled = true; $('msgEspaco').textContent = 'Arquivando…'; $('msgEspaco').className = 'msg';
     try {
       const j = await chamarLimpeza({ acao: 'arquivar', mes_id: mesId, dias: +$('diasArquivo').value || 90 });

@@ -1,4 +1,4 @@
--- INSTALAÇÃO NOVA APENAS. No projeto atual, multi-agencias.sql, hierarquia.sql, squads.sql, convites.sql, divisoes.sql, gestores.sql, espaco.sql, r2.sql e endurecer.sql já foram aplicadas.
+-- INSTALAÇÃO NOVA APENAS. No projeto atual, multi-agencias.sql, hierarquia.sql, squads.sql, convites.sql, divisoes.sql, gestores.sql, espaco.sql, r2.sql, endurecer.sql e espaco-r2.sql já foram aplicadas.
 begin;
 -- =====================================================================
 --  VISTTO — schema do Supabase
@@ -1207,5 +1207,20 @@ grant execute on function public.tentar_convite(text) to service_role;
 
 -- Envio novo só pelo R2. A leitura das artes antigas continua igual.
 drop policy if exists midia_agencia_insert on storage.objects;
+
+-- ---------- inventário das artes no R2 ----------
+-- Caminhos de arte que hoje moram no R2, por agência. Só o administrador geral.
+create function public.refs_r2(p_agencia uuid) returns setof text language sql stable security definer set search_path='' as $$
+ select distinct public.midia_path(v) from (
+   select jsonb_array_elements_text(slides) v from public.posts
+   union all select capa_url from public.posts
+   union all select video_url from public.posts
+   union all select avatar_url from public.clientes
+   union all select capa_url from public.destaques
+ ) x
+ where public.e_admin() and v like 'r2:%' and public.midia_path(v) like p_agencia::text || '/%';
+$$;
+revoke all on function public.refs_r2(uuid) from public, anon;
+grant execute on function public.refs_r2(uuid) to authenticated;
 
 commit;

@@ -63,7 +63,7 @@ As artes novas vão para um bucket privado no **Cloudflare R2** (10 GB no plano 
 O bucket é fechado. Quem serve os arquivos é o Worker em `worker/index.js` (`wrangler.jsonc`, deploy pelo próprio GitHub a cada push), que só aceita link assinado com HMAC-SHA256, válido por uma hora, para um caminho e um método só. Quem assina é o Supabase: a função `midia` (ler e enviar, conferindo `pode_ref` e `pode_enviar` com o token de quem pediu), a função `cliente` (prévia do cliente) e a função `limpeza` (apagar). O segredo `SIGN_SECRET` fica nos dois lados, Worker e Supabase, e nunca no repositório.
 
 ## Espaço e limpeza
-O plano atual do Supabase guarda 1 GB de arquivos, com no máximo 50 MB por arquivo, e 5 GB de tráfego por mês. Em **Espaço e limpeza** (só o administrador geral, porque a conta mostra o total do servidor) o painel mostra o uso, quantos arquivos não estão em nenhum post e quantos meses passaram do prazo. Acima de 80% aparece um aviso no topo do painel. A conta cobre o Storage do Supabase; o R2 tem dez vezes mais espaço e é acompanhado no painel da Cloudflare.
+Em **Espaço e limpeza** (só o administrador geral, porque a conta mostra o servidor inteiro) o painel mostra os dois lugares: as artes novas no R2 (10 GB) e o armazenamento antigo do Supabase (1 GB, que só diminui). Acima de 80% em qualquer um dos dois aparece um aviso no topo do painel. **Apagar arquivos sem dono** varre os dois: no Supabase pela lista do banco, no R2 comparando o inventário do bucket (`/lista` no Worker) com `refs_r2`. **Arquivar mês** apaga as artes daquele mês dos dois lados e mantém post, tema, legenda e histórico.
 
 Duas ações: **apagar arquivos sem dono** remove do servidor o que nenhum post, cliente ou destaque referencia (arquivos da lista `midia_legada` nunca saem), e **arquivar mês** limpa as artes daquele mês, fecha o link do cliente e mantém post, tema, legenda e histórico de aprovação. As duas passam pela função `limpeza`, que confere o nível pelas funções `plano_limpeza` e `arquivar_mes` com o token de quem clicou. Não existe rotina automática: alguém precisa clicar.
 
@@ -78,7 +78,7 @@ O número e a data do post são limitados no banco a texto simples e curto, e a 
 - A função `acessos` valida a sessão e o nível de quem cadastra antes de criar a conta. Ambas usam `verify_jwt=false` (ver `supabase/config.toml`); a chave privilegiada fica só no servidor.
 
 ### Banco
-No projeto em uso, `multi-agencias.sql`, `hierarquia.sql`, `squads.sql`, `convites.sql`, `divisoes.sql`, `gestores.sql`, `espaco.sql`, `r2.sql` e `endurecer.sql` já foram aplicadas. **Não execute de novo.** `schema.sql` é a instalação completa para um banco novo.
+No projeto em uso, `multi-agencias.sql`, `hierarquia.sql`, `squads.sql`, `convites.sql`, `divisoes.sql`, `gestores.sql`, `espaco.sql`, `r2.sql`, `endurecer.sql` e `espaco-r2.sql` já foram aplicadas. **Não execute de novo.** `schema.sql` é a instalação completa para um banco novo.
 
 Instalação nova: execute `schema.sql`, crie a primeira conta no Supabase Auth, cadastre o UUID em `administradores`, ajuste os nomes em `agencias`, configure `js/config.js` com a URL e a publishable key, publique as funções `cliente`, `acessos` e `primeiro-acesso` e configure a URL do site no Auth.
 

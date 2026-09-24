@@ -14,7 +14,7 @@ create function public.gen_random_bytes(n integer) returns bytea language sql as
 create function extensions.gen_random_bytes(n integer) returns bytea language sql as $$select public.gen_random_bytes(n) $$;`);
 const rd = f => fs.readFileSync(new URL(f, import.meta.url), 'utf8');
 await db.exec(rd('./fixtures/schema-v1.sql').replace('create extension if not exists pgcrypto;', ''));
-for (const f of ['multi-agencias', 'hierarquia', 'squads', 'convites', 'divisoes', 'gestores', 'espaco', 'r2', 'endurecer']) await db.exec(rd(`../supabase/${f}.sql`));
+for (const f of ['multi-agencias', 'hierarquia', 'squads', 'convites', 'divisoes', 'gestores', 'espaco', 'r2', 'endurecer', 'espaco-r2']) await db.exec(rd(`../supabase/${f}.sql`));
 
 const A = { a: '10000000-0000-4000-8000-000000000001', b: '10000000-0000-4000-8000-000000000002' };
 const P = { admin: null, dono: ['b', 'dono'], head1: ['b', 'head'], head2: ['b', 'head'], des1: ['b', 'designer'], des2: ['b', 'designer'], traf: ['b', 'gestor_trafego'], desA: ['a', 'designer'], fora: null };
@@ -111,6 +111,12 @@ await q(`update convites set tentativas=0, expira_em=now()-interval '1 hour' whe
 assert.equal(await tentar(), 0); ok();
 // e a equipe não alcança a função
 await as('des1', async () => { await assert.rejects(q(`select * from tentar_convite($1)`, ['des2@x.test'])); ok(); });
+
+// a lista de artes no R2 é só do administrador geral, e só da agência pedida
+assert.deepEqual((await as('admin', () => rows('select refs_r2($1) r', [A.b]))).map(r => r.r).sort(),
+  [`${A.b}/capa.jpg`, `${A.b}/nova.jpg`, `${A.b}/outro.jpg`, `${A.b}/reel.mp4`, `${A.b}/slide.jpg`, `${A.b}/avatar.jpg`, `${A.b}/destaque.jpg`].sort()); ok();
+assert.deepEqual((await as('admin', () => rows('select refs_r2($1) r', [A.a]))).map(r => r.r), [`${A.a}/dela.jpg`]); ok();
+for (const w of ['dono', 'head1', 'des1']) { assert.equal((await as(w, () => rows('select refs_r2($1) r', [A.b]))).length, 0, w); ok(); }
 
 // o Storage do Supabase não aceita mais envio novo
 assert.equal((await rows(`select count(*)::int n from pg_policies where tablename='objects' and policyname='midia_agencia_insert'`))[0].n, 0); ok();

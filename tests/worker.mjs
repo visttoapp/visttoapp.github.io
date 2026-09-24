@@ -22,7 +22,14 @@ const env = {
     },
     async head(k) { return bucket.has(k) ? { size: 1 } : null; },
     async put(k, body, opt) { bucket.set(k, { body: 'conteudo', tipo: opt?.httpMetadata?.contentType }); },
-    async delete(k) { bucket.delete(k); }
+    async delete(k) { bucket.delete(k); },
+    async list({ prefix = '', limit = 1000, cursor } = {}) {
+      const todas = [...bucket.keys()].filter(k => k.startsWith(prefix)).sort();
+      const ini = cursor ? todas.indexOf(cursor) + 1 : 0;
+      const pagina = todas.slice(ini, ini + limit);
+      const fim = ini + limit >= todas.length;
+      return { objects: pagina.map(k => ({ key: k, size: bucket.get(k).body.length })), truncated: !fim, cursor: fim ? undefined : pagina[pagina.length - 1] };
+    }
   }
 };
 const ORIGEM = 'https://visttoapp.github.io';
@@ -91,6 +98,28 @@ r = await chamar('GET', 'ag/video.mp4');
 assert.equal(r.status, 200); ok();
 assert.equal(r.headers.get('Accept-Ranges'), 'bytes'); ok();
 assert.equal(r.headers.get('Content-Length'), '8'); ok();
+
+// inventário do depósito: totais com assinatura própria
+await chamar('PUT', 'ag/a.jpg', { tipo: 'image/jpeg', corpo: 'x' });
+await chamar('PUT', 'ag/b.jpg', { tipo: 'image/jpeg', corpo: 'x' });
+const lista = async (prefixo, { sig, detalhe, exp } = {}) => {
+  const e = exp ?? futuro();
+  const s = sig ?? await assinar('LISTA', prefixo, String(e));
+  return worker.fetch(new Request(`https://x/lista?prefixo=${encodeURIComponent(prefixo)}&exp=${e}&sig=${s}${detalhe ? '&detalhe=1' : ''}`), env);
+};
+r = await lista('ag/');
+assert.equal(r.status, 200); ok();
+let inv = await r.json();
+assert.equal(inv.arquivos, 3); ok();
+assert.equal(inv.bytes, 24); ok();
+assert.equal(inv.nomes, undefined); ok();
+inv = await (await lista('ag/', { detalhe: true })).json();
+assert.deepEqual(inv.nomes.sort(), ['ag/a.jpg', 'ag/b.jpg', 'ag/video.mp4']); ok();
+// prefixo de outra agência não vê nada, e assinatura errada não passa
+assert.equal((await (await lista('outra/')).json()).arquivos, 0); ok();
+assert.equal((await lista('ag/', { sig: 'errada' })).status, 403); ok();
+assert.equal((await lista('ag/', { exp: Math.floor(Date.now() / 1000) - 5 })).status, 403); ok();
+assert.equal((await lista('../segredo')).status, 400); ok();
 
 // site de fora não recebe permissão de CORS
 r = await chamar('GET', 'ag/nada.jpg', { origem: 'https://site-estranho.com' });

@@ -3,6 +3,7 @@
    confia numa assinatura curta (HMAC-SHA256) emitida pelo Supabase, que é quem
    confere o login, o squad e o link do cliente. Assinatura vencida não abre nada.
 
+   GET    /lista?prefixo=<agencia>/&exp&sig                 lista o que está guardado (só o Supabase chama)
    GET    /m/<caminho>?exp=<segundos>&sig=<assinatura>   lê o arquivo
    PUT    /m/<caminho>?exp=<segundos>&sig=<assinatura>   grava o arquivo
    DELETE /m/<caminho>?exp=<segundos>&sig=<assinatura>   apaga o arquivo
@@ -46,8 +47,29 @@ export default {
     if (req.method === 'OPTIONS') return new Response(null, { status: 204, headers: cabecalhos(req) });
     const url = new URL(req.url);
     if (url.pathname === '/' || url.pathname === '/saude') return new Response('vistto', { status: 200, headers: cabecalhos(req) });
-    if (!url.pathname.startsWith('/m/')) return erro(req, 'Rota inválida.', 404);
     if (!env.SIGN_SECRET) return erro(req, 'Worker sem segredo configurado.', 500);
+
+    // Inventário: quanto está guardado e, quando pedido, os nomes, para a limpeza saber o que sobrou.
+    if (url.pathname === '/lista') {
+      if (req.method !== 'GET') return erro(req, 'Método inválido.', 405);
+      const prefixo = url.searchParams.get('prefixo') || '';
+      const exp0 = Number(url.searchParams.get('exp'));
+      if (prefixo.includes('..') || prefixo.length > 100) return erro(req, 'Prefixo inválido.', 400);
+      if (!Number.isFinite(exp0) || exp0 * 1000 < Date.now()) return erro(req, 'Link vencido.', 403);
+      if (!iguais(url.searchParams.get('sig') || '', await assinatura(env.SIGN_SECRET, 'LISTA', prefixo, String(exp0)))) return erro(req, 'Link inválido.', 403);
+      const detalhe = url.searchParams.get('detalhe') === '1';
+      let cursor, arquivos = 0, bytes = 0, nomes = [], paginas = 0, truncado = false;
+      do {
+        const r = await env.MIDIA.list({ prefix: prefixo, limit: 1000, cursor });
+        for (const o of r.objects) { arquivos++; bytes += o.size || 0; if (detalhe) nomes.push(o.key); }
+        cursor = r.truncated ? r.cursor : undefined;
+        if (++paginas >= 20 && cursor) { truncado = true; break; }
+      } while (cursor);
+      return new Response(JSON.stringify({ arquivos, bytes, truncado, nomes: detalhe ? nomes : undefined }),
+        { headers: cabecalhos(req, { 'Content-Type': 'application/json' }) });
+    }
+
+    if (!url.pathname.startsWith('/m/')) return erro(req, 'Rota inválida.', 404);
 
     const caminho = decodeURIComponent(url.pathname.slice(3));
     if (!caminho || caminho.includes('..') || caminho.length > 300) return erro(req, 'Caminho inválido.', 400);
