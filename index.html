@@ -9,9 +9,9 @@
 <link rel="icon" href="assets/vistto.svg" type="image/svg+xml">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Cormorant+Garamond:wght@500&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/style.css?v=20260924a"><link rel="stylesheet" href="css/agencies.css?v=20260924a">
+<link rel="stylesheet" href="css/style.css?v=20260925a"><link rel="stylesheet" href="css/agencies.css?v=20260925a">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="js/config.js?v=20260924a"></script>
+<script src="js/config.js?v=20260925a"></script>
 </head>
 <body class="admin" data-tema="neutro"><script>if (new URLSearchParams(location.search).has("t") || new URLSearchParams(location.hash.slice(1)).has("t")) location.replace("c" + location.search + location.hash);</script>
 
@@ -52,8 +52,17 @@
       <select id="selCliente"></select>
     </div>
 
+    <div class="side-section" id="boxCanal" hidden>
+      <label for="selCanal" class="label">Canal</label>
+      <select id="selCanal">
+        <option value="instagram">Instagram · feed</option>
+        <option value="meta">Meta Ads</option>
+        <option value="google">Google Ads</option>
+      </select>
+    </div>
+
     <div class="side-section">
-      <div class="row"><label for="selMes" class="label">Mês</label><button class="add" id="btnNovoMes"><svg class="i" viewBox="0 0 16 16"><path d="M8 3v10M3 8h10"/></svg>Novo</button></div>
+      <div class="row"><label for="selMes" class="label" id="lblMes">Mês</label><button class="add" id="btnNovoMes"><svg class="i" viewBox="0 0 16 16"><path d="M8 3v10M3 8h10"/></svg>Novo</button></div>
       <select id="selMes"></select>
     </div>
 
@@ -73,7 +82,7 @@
     <div class="wrap">
       <div class="aviso" id="avisoEspaco" hidden></div>
       <div class="page-head">
-        <div><span class="eyebrow">Aprovação de conteúdo</span><h2 id="titulo">—</h2></div>
+        <div><span class="eyebrow" id="eyebrow">Aprovação de conteúdo</span><h2 id="titulo">—</h2></div>
         <div class="actions">
           <select id="filterStatus" aria-label="Filtrar posts"><option value="">Todos os status</option><option value="pendente">Aguardando</option><option value="ajuste">Ajustes solicitados</option><option value="aprovado">Aprovados</option></select>
           <button class="btn" id="btnImportPasta" hidden><svg class="i" viewBox="0 0 16 16"><path d="M2 5.5A1.5 1.5 0 0 1 3.5 4h2l1.2 1.5h5.8A1.5 1.5 0 0 1 14 7v4.5A1.5 1.5 0 0 1 12.5 13h-9A1.5 1.5 0 0 1 2 11.5z"/></svg>Importar pasta</button>
@@ -133,11 +142,12 @@
 
       <!-- MÊS -->
       <div class="card" id="cardMes" hidden>
-        <div class="card-head"><div><h4>Novo mês</h4><p>Cada mês reúne os posts que o cliente vai aprovar.</p></div></div>
+        <div class="card-head"><div><h4 id="mesFormTitle">Novo mês</h4><p id="mesFormHint">Cada mês reúne os posts que o cliente vai aprovar.</p></div></div>
         <div class="form-grid">
-          <div class="field"><label class="label" for="mAnoMes">Ano e mês</label><input id="mAnoMes" placeholder="2026-10"></div>
-          <div class="field"><label class="label" for="mTitulo">Título</label><input id="mTitulo" placeholder="Outubro 2026"></div>
-          <div class="field full"><label class="label" for="mIntro">Introdução <span class="hint">(opcional)</span></label><textarea id="mIntro" rows="2" placeholder="Mensagem que aparece no topo da prévia"></textarea></div>
+          <div class="field"><label class="label" for="mAnoMes" id="lblAnoMes">Ano e mês</label><input id="mAnoMes" placeholder="2026-10"></div>
+          <div class="field"><label class="label" for="mTitulo" id="lblTituloMes">Título</label><input id="mTitulo" placeholder="Outubro 2026"></div>
+          <div class="field" id="fldObjetivo" hidden><label class="label" for="mObjetivo">Objetivo</label><select id="mObjetivo"></select></div>
+          <div class="field full"><label class="label" for="mIntro" id="lblIntroMes">Introdução <span class="hint">(opcional)</span></label><textarea id="mIntro" rows="2" placeholder="Mensagem que aparece no topo da prévia"></textarea></div>
         </div>
         <div class="actions"><button class="btn primary" id="btnSalvarMes">Salvar mês</button><button class="btn ghost" id="btnFecharMes">Cancelar</button></div>
         <div class="msg" id="msgMes"></div>
@@ -185,15 +195,20 @@
 
       <!-- POST -->
       <div class="card" id="cardPost">
-        <div class="card-head"><div><h4 id="postFormTitle">Novo post</h4><p>Envie as lâminas na ordem do carrossel. Para reel, envie o .mp4 e uma imagem de capa.</p></div></div>
+        <div class="card-head"><div><h4 id="postFormTitle">Novo post</h4><p id="postFormHint">Envie as lâminas na ordem do carrossel. Para reel, envie o .mp4 e uma imagem de capa.</p></div></div>
         <div class="form-grid">
-          <div class="field"><label class="label" for="pNumero">Número</label><input id="pNumero" placeholder="01"></div>
-          <div class="field"><label class="label" for="pData">Data prevista</label><input id="pData" placeholder="09/10"></div>
-          <div class="field"><label class="label" for="pTema">Tema</label><input id="pTema" placeholder="Design · confiança"></div>
-          <div class="field"><label class="label" for="pTipo">Formato</label><select id="pTipo"><option value="carousel">Carrossel</option><option value="image">Imagem única</option><option value="reel">Reel (vídeo)</option></select></div>
-          <div class="field full"><label class="label" for="pTitulo">Título <span class="hint">(use &lt;em&gt;palavra&lt;/em&gt; para destacar)</span></label><input id="pTitulo" placeholder="Título do post"></div>
-          <div class="field full"><label class="label" for="pLegenda">Legenda</label><textarea id="pLegenda" rows="5" placeholder="Legenda completa"></textarea></div>
-          <div class="field full"><span class="label">Arquivos</span><div class="thumbs" id="thumbs"></div><div class="drop" id="drop"><span><b>Clique para enviar</b> ou arraste aqui</span><span class="hint">JPG, PNG, WebP, GIF ou MP4 · até 50 MB</span></div></div>
+          <div class="field"><label class="label" for="pNumero" id="lblNumero">Número</label><input id="pNumero" placeholder="01"></div>
+          <div class="field"><label class="label" for="pData" id="lblData">Data prevista</label><input id="pData" placeholder="09/10"></div>
+          <div class="field" id="fldTema"><label class="label" for="pTema">Tema</label><input id="pTema" placeholder="Design · confiança"></div>
+          <div class="field" id="fldConjunto" hidden><label class="label" for="pConjunto" id="lblConjunto">Conjunto de anúncios</label><input id="pConjunto" maxlength="80" placeholder="Remarketing 30 dias"></div>
+          <div class="field"><label class="label" for="pTipo">Formato</label><select id="pTipo"></select></div>
+          <div class="field full" id="fldPublico" hidden><label class="label" for="pPublico" id="lblPublico">Público</label><input id="pPublico" maxlength="300" placeholder="Mulheres 25-45, raio de 10 km, interesse em confeitaria"></div>
+          <div class="field full"><label class="label" for="pTitulo" id="lblTitulo">Título <span class="hint">(use &lt;em&gt;palavra&lt;/em&gt; para destacar)</span></label><input id="pTitulo" placeholder="Título do post"></div>
+          <div class="field full"><label class="label" for="pLegenda" id="lblLegenda">Legenda</label><textarea id="pLegenda" rows="5" placeholder="Legenda completa"></textarea></div>
+          <div class="field full" id="fldDescricao" hidden><label class="label" for="pDescricao">Descrição</label><input id="pDescricao" maxlength="300" placeholder="Linha de apoio que aparece abaixo do título"></div>
+          <div class="field" id="fldCta" hidden><label class="label" for="pCta">Botão</label><select id="pCta"></select></div>
+          <div class="field" id="fldDestino" hidden><label class="label" for="pDestino">Endereço de destino</label><input id="pDestino" maxlength="300" placeholder="https://..."></div>
+          <div class="field full" id="fldArquivos"><span class="label">Arquivos</span><div class="thumbs" id="thumbs"></div><div class="drop" id="drop"><span><b>Clique para enviar</b> ou arraste aqui</span><span class="hint">JPG, PNG, WebP, GIF ou MP4 · até 50 MB</span></div></div>
         </div>
         <input type="file" id="file" multiple accept="image/*,video/mp4" hidden>
         <div class="actions">
@@ -205,9 +220,9 @@
 
       <!-- LISTA -->
       <div class="card lista-card">
-        <div class="card-head"><div><h4>Posts do mês</h4><p>Retornos do cliente aparecem aqui. Use “Atualizar aprovações” para ver as novidades.</p></div></div>
+        <div class="card-head"><div><h4 id="listaTitle">Posts do mês</h4><p>Retornos do cliente aparecem aqui. Use “Atualizar aprovações” para ver as novidades.</p></div></div>
         <div class="table-wrap">
-          <table><thead><tr><th></th><th>#</th><th>Tema</th><th>Formato</th><th>Status</th><th>Retorno do cliente</th><th>Ações</th></tr></thead>
+          <table><thead><tr><th></th><th>#</th><th id="colTema">Tema</th><th>Formato</th><th>Status</th><th>Retorno do cliente</th><th>Ações</th></tr></thead>
           <tbody id="lista"></tbody></table>
         </div>
       </div>
@@ -215,6 +230,6 @@
   </main>
 </div>
 
-<script src="js/brand.js?v=20260924a"></script><script src="js/media.js?v=20260924a"></script><script src="js/importar.js?v=20260924a"></script><script src="js/admin.js?v=20260924a"></script>
+<script src="js/brand.js?v=20260925a"></script><script src="js/media.js?v=20260925a"></script><script src="js/importar.js?v=20260925a"></script><script src="js/admin.js?v=20260925a"></script>
 </body>
 </html>

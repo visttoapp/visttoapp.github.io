@@ -5,12 +5,14 @@ Deno.serve(async req=>{
   if(req.method==='OPTIONS')return new Response('ok',{headers:cors});
   if(req.method!=='POST')return reply({error:'Método inválido'},405);
   try {
-    const {token,mes}=await req.json();
+    const {token,mes,canal,entrega}=await req.json();
     if(typeof token!=='string'||! /^[a-f0-9]{24,64}$/.test(token))return reply(null);
     if(mes!==null && mes!==undefined && (typeof mes!=='string'||!/^\d{4}-\d{2}$/.test(mes)))return reply({error:'Mês inválido'},400);
+    if(canal!==null && canal!==undefined && !['instagram','meta','google'].includes(canal))return reply({error:'Canal inválido'},400);
+    if(entrega!==null && entrega!==undefined && (typeof entrega!=='string'||!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(entrega)))return reply({error:'Entrega inválida'},400);
     const url=Deno.env.get('SUPABASE_URL')!;
     const sb=createClient(url,Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,{auth:{persistSession:false}});
-    const {data,error}=await sb.rpc('get_mes',{p_token:token,p_ano_mes:mes||null});
+    const {data,error}=await sb.rpc('get_mes',{p_token:token,p_ano_mes:mes||null,p_canal:canal||null,p_entrega:entrega||null});
     if(error)throw error;
     if(!data)return reply(null);
     const cache=new Map<string,Promise<string>>();

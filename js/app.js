@@ -12,8 +12,10 @@
     prev: '<svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M8 2 4 6l4 4"/></svg>',
     next: '<svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M4 2l4 4-4 4"/></svg>'
   };
-  const LABEL = { carousel: 'Carrossel', reel: 'Reel · Vídeo', image: 'Imagem' };
+  const LABEL = { carousel: 'Carrossel', reel: 'Reel · Vídeo', image: 'Imagem', texto: 'Texto' };
+  const LABEL_ADS = { carousel: 'Carrossel', reel: 'Vídeo', image: 'Imagem', texto: 'Texto' };
   const STATUS = { pendente: 'Aguardando', aprovado: 'Aprovado', ajuste: 'Ajuste solicitado' };
+  const CANAL = { instagram: 'Feed', meta: 'Meta Ads', google: 'Google Ads' };
 
   const params = new URLSearchParams(location.hash.slice(1) || location.search);
   if(location.search.includes('t=')) history.replaceState(null,'',location.pathname+'#'+params.toString());
@@ -22,31 +24,59 @@
 
   $('agencyLogo').textContent=agency.name;
 
-  let data, posts = [];
+  let data, posts = [], canal = 'instagram', ads = false;
   const cover = p => p.capa_url || (p.slides && p.slides[0]) || '';
 
-  async function load(anoMes) {
-    try { data = await window.API.carregar(token, anoMes); }
+  async function load(alvo) {
+    try { data = await window.API.carregar(token, alvo); }
     catch (e) { return fail('Não foi possível carregar. ' + (e.message || '')); }
     if (!data) return fail('Link inválido ou expirado. Peça um novo link para a agência.');
     agency.name=data.agencia?.nome || 'Vistto'; BRAND.apply(data.agencia);
-    if (!data.mes) return fail(`Ainda não há conteúdo publicado para ${data.cliente.nome}.`);
+    canal = data.canal || 'instagram'; ads = canal !== 'instagram';
+    document.body.dataset.canal = canal;
+    abas();
+    if (!data.mes) return fail(ads
+      ? `Ainda não há ${CANAL[canal]} publicado para ${data.cliente.nome}.`
+      : `Ainda não há conteúdo publicado para ${data.cliente.nome}.`);
     posts = (data.posts || []).map((p, i) => ({ ...p, idx: i, numero: pad(p.numero || i + 1) }));
     render();
   }
-  function fail(msg) {
-    $('title').textContent = 'Prévia do feed';
-    $('empty').textContent = msg; $('empty').hidden = false;
-    $('feed').innerHTML = ''; $('hl').innerHTML = ''; $('profile').innerHTML = ''; $('calList').innerHTML = '';
+  // Uma aba por canal com conteúdo publicado. Cliente sem anúncio nem vê a barra.
+  function abas() {
+    const lista = data.canais || [];
+    const box = $('canais');
+    box.hidden = lista.length < 2;
+    box.innerHTML = lista.map(c => `<button role="tab" data-canal="${esc(c.canal)}" aria-selected="${c.canal === canal}" class="${c.canal === canal ? 'on' : ''}">${esc(CANAL[c.canal] || c.canal)}</button>`).join('');
+    box.querySelectorAll('[data-canal]').forEach(b => b.onclick = () => { if (b.dataset.canal !== canal) load({ canal: b.dataset.canal }); });
   }
+  function fail(msg) {
+    $('title').textContent = ads ? CANAL[canal] : 'Prévia do feed';
+    $('empty').textContent = msg; $('empty').hidden = false;
+    $('feed').innerHTML = ''; $('hl').innerHTML = ''; $('profile').innerHTML = ''; $('calList').innerHTML = ''; $('summary').innerHTML = '';
+    $('months').hidden = true; $('intro').textContent = ''; $('legend').innerHTML = '';
+  }
+
+  const nomeDe = p => p.tema || (p.titulo || '').replace(/<[^>]+>/g, '') || 'Sem título';
+  const dominio = v => { try { return new URL(v).host.replace(/^www\./, ''); } catch { return ''; } };
+  // Anúncio de pesquisa do Google: sem arte, só o bloco de texto como aparece na busca.
+  const anuncioTexto = p => `<span class="txtad">
+      <span class="txtad-top"><span class="txtad-tag">Anúncio</span>${p.destino ? `<span class="txtad-url">${esc(dominio(p.destino))}</span>` : ''}</span>
+      <b>${esc((p.titulo || '').replace(/<[^>]+>/g, ''))}</b>
+      ${p.descricao ? `<span class="txtad-desc">${esc(p.descricao)}</span>` : ''}</span>`;
 
   function render() {
     const C = data.cliente, M = data.mes;
     $('clientName').textContent = C.nome;
     $('clientMonth').textContent = M.titulo;
-    $('clientMeta').textContent = `${C.handle || ''} · ${posts.length} publicações`;
+    $('clientMeta').textContent = ads
+      ? [M.objetivo, `${posts.length} anúncio${posts.length === 1 ? '' : 's'}`].filter(Boolean).join(' · ')
+      : `${C.handle || ''} · ${posts.length} publicações`;
     $('title').textContent = M.titulo;
-    $('intro').textContent = M.intro || 'Toque em qualquer post para ver o conteúdo completo. Aprove ou peça ajustes direto por aqui.';
+    $('eyebrow').textContent = ads ? `${CANAL[canal]} · aprovação de criativos` : 'Prévia do feed · Aprovação';
+    $('calTitle').textContent = ads ? 'Anúncios da campanha' : 'Calendário do mês';
+    $('intro').textContent = M.intro || (ads
+      ? 'Toque em qualquer anúncio para ver o criativo e os textos. Aprove ou peça ajustes direto por aqui.'
+      : 'Toque em qualquer post para ver o conteúdo completo. Aprove ou peça ajustes direto por aqui.');
     $('foot').textContent = `Prévia de aprovação · ${agency.name} · ${M.titulo}`;
     $('empty').hidden = true;
 
@@ -54,36 +84,39 @@
     sel.hidden=true;
     if ((data.meses || []).length > 1) {
       sel.hidden = false;
-      sel.innerHTML = data.meses.map(m => `<option value="${esc(m.ano_mes)}" ${m.ano_mes === M.ano_mes ? 'selected' : ''}>${esc(m.titulo)}</option>`).join('');
-      sel.onchange = () => load(sel.value);
+      sel.innerHTML = data.meses.map(m => `<option value="${esc(m.id)}" ${m.id === M.id ? 'selected' : ''}>${esc(m.titulo)}</option>`).join('');
+      sel.onchange = () => load({ entrega: sel.value });
     }
 
     const approved = posts.filter(p => p.status === 'aprovado').length;
     const adjust = posts.filter(p => p.status === 'ajuste').length;
     $('summary').innerHTML =
-      `<div><b>${posts.length}</b><span>posts</span></div>` +
+      `<div><b>${posts.length}</b><span>${ads ? 'anúncios' : 'posts'}</span></div>` +
       `<div><b>${approved}</b><span>aprovados</span></div>` +
       `<div><b>${adjust}</b><span>ajustes</span></div>`;
 
     const counts = posts.reduce((a, p) => { a[p.tipo] = (a[p.tipo] || 0) + 1; return a; }, {});
-    $('legend').innerHTML = ['carousel', 'reel', 'image'].filter(t => counts[t]).map(t => `<span>${I[t]}${LABEL[t].split(' ')[0]}</span>`).join('');
+    $('legend').innerHTML = ['carousel', 'reel', 'image', 'texto'].filter(t => counts[t])
+      .map(t => `<span>${I[t] || I.image}${(ads ? LABEL_ADS[t] : LABEL[t]).split(' ')[0]}</span>`).join('');
 
     $('calList').innerHTML = posts.map(p => `
       <li><button data-post="${p.idx}">
         <span class="num">${esc(p.numero)}</span>
         <span class="thumb">${cover(p) ? `<img src="${esc(cover(p))}" alt="">` : ''}</span>
-        <span class="topic">${esc(p.tema)}${p.data ? `<small>${esc(p.data)}</small>` : ''}</span>
+        <span class="topic">${esc(nomeDe(p))}${p.data || p.conjunto ? `<small>${esc(ads ? (p.conjunto || p.data || '') : p.data)}</small>` : ''}</span>
         <span class="dot ${esc(p.status)}" title="${STATUS[p.status] || ''}"></span>
       </button></li>`).join('');
 
     const isSvg = C.avatar_url && /\.svg$/i.test(C.avatar_url);
-    $('profile').innerHTML = `
+    $('profile').innerHTML = ads ? '' : `
       <div class="av ${isSvg ? '' : 'photo'}">${C.avatar_url ? `<img src="${esc(C.avatar_url)}" alt="">` : ''}</div>
       <div><b>${esc(C.handle || C.nome)}</b><div class="bio">${esc(C.bio || '')}</div></div>`;
 
-    $('hl').innerHTML = (data.destaques || []).map((s, i) => `
+    $('hl').innerHTML = ads ? '' : (data.destaques || []).map((s, i) => `
       <button data-story="${i}"><span class="ring"><div>${s.capa_url ? `<img src="${esc(s.capa_url)}" alt="">` : ''}</div></span><span>${esc(s.nome)}</span></button>`).join('');
 
+    if (ads) return renderAnuncios();
+    $('feed').className = 'feed';
     const order = [...posts].reverse(); // mais recente primeiro, como no Instagram
     $('feed').innerHTML = order.map(p => `
       <button class="tile" data-post="${p.idx}" aria-label="Post ${esc(p.numero)}: ${esc(p.tema)}">
@@ -95,11 +128,40 @@
       </button>`).join('');
   }
 
+  // Campanha → conjunto (ou grupo de anúncios) → anúncio, na mesma divisão do gerenciador.
+  function renderAnuncios() {
+    const grupos = [];
+    posts.forEach(p => {
+      const nome = p.conjunto || '';
+      let g = grupos.find(x => x.nome === nome);
+      if (!g) grupos.push(g = { nome, itens: [] });
+      g.itens.push(p);
+    });
+    $('feed').className = 'ads';
+    $('feed').innerHTML = grupos.map(g => `
+      <section class="adgroup">
+        ${g.nome ? `<div class="adgroup-head"><span class="label">${esc(g.nome)}</span><small>${g.itens.length} anúncio${g.itens.length > 1 ? 's' : ''}</small></div>` : ''}
+        <div class="adlist">${g.itens.map(p => `
+          <button class="adcard" data-post="${p.idx}" aria-label="Anúncio ${esc(p.numero)}: ${esc(nomeDe(p))}">
+            <span class="adthumb">${p.tipo === 'texto' ? anuncioTexto(p)
+              : p.video_url && !cover(p) ? `<video src="${esc(p.video_url)}" muted playsinline preload="metadata"></video>`
+              : `<img src="${esc(cover(p))}" alt="" loading="lazy">`}</span>
+            <span class="adbody">
+              <span class="adnum">${esc(p.numero)} · ${esc(LABEL_ADS[p.tipo] || 'Imagem')}</span>
+              <b>${esc(nomeDe(p))}</b>
+              ${p.legenda ? `<span class="adtext">${esc(p.legenda)}</span>` : ''}
+              <span class="adfoot">${p.cta ? `<span class="adcta">${esc(p.cta)}</span>` : '<span></span>'}<span class="st ${esc(p.status)}">${STATUS[p.status]}</span></span>
+            </span>
+          </button>`).join('')}</div>
+      </section>`).join('');
+  }
+
   /* ---------- modal ---------- */
   const backdrop = $('backdrop'), modal = $('modal');
   let cur = null, idx = 0, total = 1;
 
   function slidesFor(p) {
+    if (p.tipo === 'texto') return [`<div class="slide slide-texto">${anuncioTexto(p)}</div>`];
     if (p.tipo === 'reel') return [`<div class="slide"><video src="${esc(p.video_url)}" controls autoplay playsinline ${p.capa_url ? `poster="${esc(p.capa_url)}"` : ''}></video></div>`];
     return (p.slides || []).map(s => `<div class="slide"><img src="${esc(s)}" alt=""></div>`);
   }
@@ -143,16 +205,27 @@
       </div>
       <div class="info">
         ${multi ? `<div class="dots" id="dots">${slides.map((_, k) => `<i class="${k === 0 ? 'on' : ''}"></i>`).join('')}</div>` : ''}
+        ${ads ? infoAnuncio(cur, multi, total) : `
         <div class="label">Post ${esc(cur.numero)} &nbsp;·&nbsp; ${LABEL[cur.tipo] || 'Imagem'}${multi ? ` · ${total} imagens` : ''}${cur.data ? ` &nbsp;·&nbsp; ${esc(cur.data)}` : ''}</div>
         <h3>${rich(cur.titulo)}</h3>
         <div class="label">Legenda</div>
-        <div class="cap">${esc(cur.legenda)}</div>
+        <div class="cap">${esc(cur.legenda)}</div>`}
         ${reviewHTML(cur)}
       </div>`;
     show();
     document.querySelectorAll('.cal button').forEach(b => b.classList.toggle('active', +b.dataset.post === i));
     if (multi) { $('prev').onclick = () => go(idx - 1); $('next').onclick = () => go(idx + 1); swipe($('media')); go(0); }
     bindReview();
+  }
+
+  function infoAnuncio(p, multi, total) {
+    return `
+      <div class="label">${p.conjunto ? esc(p.conjunto) + ' &nbsp;·&nbsp; ' : ''}Anúncio ${esc(p.numero)} &nbsp;·&nbsp; ${esc(LABEL_ADS[p.tipo] || 'Imagem')}${multi ? ` · ${total} imagens` : ''}${p.data ? ` &nbsp;·&nbsp; ${esc(p.data)}` : ''}</div>
+      <h3>${rich(p.titulo)}</h3>
+      ${p.legenda ? `<div class="label">Texto principal</div><div class="cap">${esc(p.legenda)}</div>` : ''}
+      ${p.descricao ? `<div class="label">Descrição</div><div class="cap">${esc(p.descricao)}</div>` : ''}
+      ${p.cta || p.destino ? `<div class="label">Botão e destino</div><div class="cap">${p.cta ? `<span class="adcta">${esc(p.cta)}</span> ` : ''}${p.destino ? `<a href="${esc(p.destino)}" target="_blank" rel="noopener noreferrer nofollow">${esc(dominio(p.destino))}</a>` : ''}</div>` : ''}
+      ${p.publico ? `<div class="label">${canal === 'google' ? 'Palavras-chave e segmentação' : 'Público'}</div><div class="cap">${esc(p.publico)}</div>` : ''}`;
   }
 
   async function send(acao) {
@@ -220,5 +293,5 @@
     if (total > 1 && e.key === 'ArrowLeft') go(idx - 1);
   });
 
-  load(params.get('m'));
+  load({ m: params.get('m'), entrega: params.get('e'), canal: params.get('k') });
 })();

@@ -49,6 +49,15 @@ Um e-mail é uma conta. Para ter contas separadas por agência com a mesma caixa
 
 O link funciona como chave. **Invalidar link antigo e gerar outro** revoga o anterior. URLs temporárias de mídia já emitidas duram até uma hora. O status de um post só muda pela resposta do cliente ou por "marcar como ajustado".
 
+## Anúncios: Meta Ads e Google Ads
+Quem é gestor de tráfego, Head, sócio, dono ou administrador geral vê um seletor de **Canal** na barra lateral: Instagram · feed, Meta Ads e Google Ads. Designer, editor de vídeo e social media continuam só no feed, e nem enxergam as campanhas nem as artes delas. A regra é do banco (`pode_canal`), não da tela.
+
+Nos canais de anúncio a divisão é a mesma dos gerenciadores: **campanha → conjunto (ou grupo de anúncios) → anúncio**. A campanha tem nome, objetivo (Vendas, Tráfego, Performance Max, Pesquisa…) e mês de referência, e o mesmo mês aceita várias campanhas. O anúncio tem conjunto, público ou palavras-chave, formato, título, texto principal, descrição, botão e endereço de destino. O formato **só texto** existe para o anúncio de pesquisa do Google, que não tem arte. O endereço precisa ser `https://` e é conferido no banco.
+
+O cliente aprova pelo mesmo link: a página dele ganha abas (Feed · Meta Ads · Google Ads), e só aparece a aba do canal que tem algo publicado. Cada anúncio tem o mesmo aprovar, pedir ajuste e comentar dos posts, com o mesmo histórico. Publicar a campanha continua sendo de Head para cima, como no feed.
+
+Tudo o mais é reaproveitado: importar pasta, baixar originais, limpeza, arquivamento e as fechaduras da mídia valem igual para os criativos.
+
 ## Importar a pasta do mês
 Com o mês aberto, **Importar pasta** (no topo) lê uma pasta do computador e monta os posts. A regra: pasta com várias artes vira carrossel na ordem dos nomes, arte solta vira post de imagem, `.mp4` vira reel e puxa a capa de mesmo nome ou número. Pastas de categoria (`carrosseis`, `esteticos`, `feed`, `reels`, `stories`, `artes`…) são só organização e não viram post. Pastas de trabalho (`brutos`, `psd`, `editaveis`, `fontes`, `refs`, `backup`) e formatos fora de JPG, PNG, WebP, GIF e MP4 ficam de fora.
 
@@ -78,9 +87,9 @@ O número e a data do post são limitados no banco a texto simples e curto, e a 
 - A função `acessos` valida a sessão e o nível de quem cadastra antes de criar a conta. Ambas usam `verify_jwt=false` (ver `supabase/config.toml`); a chave privilegiada fica só no servidor.
 
 ### Banco
-No projeto em uso, `multi-agencias.sql`, `hierarquia.sql`, `squads.sql`, `convites.sql`, `divisoes.sql`, `gestores.sql`, `espaco.sql`, `r2.sql`, `endurecer.sql` e `espaco-r2.sql` já foram aplicadas. **Não execute de novo.** `schema.sql` é a instalação completa para um banco novo.
+No projeto em uso, `multi-agencias.sql`, `hierarquia.sql`, `squads.sql`, `convites.sql`, `divisoes.sql`, `gestores.sql`, `espaco.sql`, `r2.sql`, `endurecer.sql`, `espaco-r2.sql` e `anuncios.sql` já foram aplicadas. **Não execute de novo.** `schema.sql` é a instalação completa para um banco novo.
 
-Instalação nova: execute `schema.sql`, crie a primeira conta no Supabase Auth, cadastre o UUID em `administradores`, ajuste os nomes em `agencias`, configure `js/config.js` com a URL e a publishable key, publique as funções `cliente`, `acessos` e `primeiro-acesso` e configure a URL do site no Auth.
+Instalação nova: execute `schema.sql`, crie a primeira conta no Supabase Auth, cadastre o UUID em `administradores`, ajuste os nomes em `agencias`, configure `js/config.js` com a URL e a publishable key, publique as funções `cliente`, `acessos`, `primeiro-acesso`, `midia` e `limpeza` e configure a URL do site no Auth.
 
 ### Verificação
 `npm install` e `npm test` na raiz. Os testes usam PGlite com usuários fictícios para conferir isolamento, níveis e funções.

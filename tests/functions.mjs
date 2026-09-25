@@ -102,4 +102,16 @@ assert.equal(await (await customer(req({token:'invalid'}))).json(),null);assert.
 assert.equal(await (await customer(req({token:'b'.repeat(24)}))).json(),null);assert.equal(signed.length,0);checks++;
 const result=await (await customer(req({token:'a'.repeat(24)}))).json();assert.equal(result.posts[0].slides[0],'https://test/signed/agency/a.jpg');assert.deepEqual(signed,['agency/a.jpg']);checks++;
 assert.equal((await customer(req({token:'a'.repeat(24),mes:'malformed'}))).status,400);checks++;
+// canal e campanha: só os valores conhecidos passam
+assert.equal((await customer(req({token:'a'.repeat(24),canal:'tiktok'}))).status,400);checks++;
+assert.equal((await customer(req({token:'a'.repeat(24),entrega:'nao-e-uuid'}))).status,400);checks++;
+{
+ let visto=null;
+ const c2=load('cliente',{rpc:async(n,a)=>{visto=a;return {data:null};},storage:{from:()=>({createSignedUrl:async()=>({data:{signedUrl:'x'}})})}});
+ await c2(req({token:'a'.repeat(24),canal:'meta',entrega:'11111111-2222-4333-8444-555555555555'}));
+ assert.equal(visto.p_canal,'meta');checks++;
+ assert.equal(visto.p_entrega,'11111111-2222-4333-8444-555555555555');checks++;
+ await c2(req({token:'a'.repeat(24)}));
+ assert.equal(visto.p_canal,null);assert.equal(visto.p_entrega,null);checks++;
+}
 console.log('PASS:',checks,'server function authorization and media checks.');

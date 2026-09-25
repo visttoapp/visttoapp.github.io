@@ -465,3 +465,44 @@ body.trocar-senha .main .wrap>:not(#cardSenha),body.trocar-senha .sidebar .side-
   .backdrop{padding:0;align-items:flex-end}
   .modal{border-radius:var(--r-xl) var(--r-xl) 0 0;max-height:94vh}
 }
+
+/* ---------- canais: abas do cliente e anúncios ---------- */
+.canais{display:flex;gap:6px;margin-top:12px;flex-wrap:wrap}
+.canais button{flex:1 1 auto;padding:7px 12px;border-radius:var(--r-sm);border:1px solid var(--border);background:var(--surface);font-size:12px;font-weight:600;color:var(--text-2);white-space:nowrap;transition:background .15s,color .15s,border-color .15s}
+.canais button:hover{background:var(--surface-3);color:var(--text)}
+.canais button.on{background:var(--brand-soft);border-color:var(--brand-border);color:var(--brand-text)}
+
+.ads{display:flex;flex-direction:column;gap:22px;margin-top:16px}
+.adgroup-head{display:flex;align-items:baseline;justify-content:space-between;gap:12px;margin-bottom:8px}
+.adgroup-head .label{margin:0}
+.adgroup-head small{font-size:12px;color:var(--text-3)}
+.adlist{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:12px}
+.adcard{display:flex;flex-direction:column;text-align:left;background:var(--surface);border:1px solid var(--border);border-radius:var(--r-lg);overflow:hidden;box-shadow:var(--shadow-soft);transition:transform .15s,box-shadow .15s}
+.adcard:hover{transform:translateY(-2px);border-color:var(--border-strong)}
+.adthumb{display:block;position:relative;aspect-ratio:1/1;background:var(--surface-3);overflow:hidden}
+.adthumb img,.adthumb video{width:100%;height:100%;object-fit:cover;display:block}
+.adbody{display:flex;flex-direction:column;gap:6px;padding:12px 14px 14px}
+.adnum{font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--text-3)}
+.adbody b{font-size:14px;font-weight:600;line-height:20px;color:var(--text)}
+.adtext{font-size:13px;line-height:19px;color:var(--text-2);display:-webkit-box;-webkit-line-clamp:2;line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.adfoot{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:2px}
+.adcta{display:inline-flex;align-items:center;padding:3px 10px;border-radius:var(--r-sm);background:var(--surface-3);border:1px solid var(--border);font-size:12px;font-weight:600;color:var(--text-2)}
+.adfoot .st{display:inline-flex;align-items:center;gap:6px;padding:2px 8px;border-radius:var(--r-sm);font-size:11px;font-weight:600;color:var(--text-2);background:var(--surface-3)}
+.adfoot .st.aprovado{background:var(--success-soft);color:var(--success);border:1px solid var(--success-border)}
+.adfoot .st.ajuste{background:var(--warning-soft);color:var(--warning);border:1px solid var(--warning-border)}
+
+/* anúncio de pesquisa do Google: só texto */
+.txtad{display:flex;flex-direction:column;gap:4px;padding:16px;height:100%;justify-content:center;background:var(--surface)}
+.txtad-top{display:flex;align-items:center;gap:8px}
+.txtad-tag{font-size:11px;font-weight:700;color:var(--text)}
+.txtad-url{font-size:12px;color:var(--text-2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.txtad b{font-size:16px;line-height:22px;font-weight:500;color:#1a0dab}
+.txtad-desc{font-size:13px;line-height:19px;color:var(--text-2)}
+body[data-tema="escuro"] .txtad b{color:#8ab4f8}
+.media .slide-texto{display:grid;place-items:center;padding:24px;background:var(--surface-2)}
+.media .slide-texto .txtad{max-width:520px;border:1px solid var(--border);border-radius:var(--r-lg);height:auto}
+.info .cap a{color:var(--brand-text);text-decoration:underline}
+
+@media (max-width:640px){
+  .adlist{grid-template-columns:1fr}
+}

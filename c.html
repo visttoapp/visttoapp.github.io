@@ -9,7 +9,7 @@
 <link rel="icon" href="assets/vistto.svg" type="image/svg+xml">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Cormorant+Garamond:wght@500&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/style.css?v=20260924a"><link rel="stylesheet" href="css/agencies.css?v=20260924a">
+<link rel="stylesheet" href="css/style.css?v=20260925a"><link rel="stylesheet" href="css/agencies.css?v=20260925a">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body class="cliente" data-tema="neutro">
@@ -28,12 +28,13 @@
       <h1 id="clientName"></h1>
       <span class="label month" id="clientMonth"></span>
       <div class="meta" id="clientMeta"></div>
-      <select class="months" id="months" aria-label="Mês" hidden></select>
+      <div class="canais" id="canais" hidden role="tablist" aria-label="Canal"></div>
+      <select class="months" id="months" aria-label="Entrega" hidden></select>
       <div class="summary" id="summary"></div>
     </div>
 
     <nav class="cal">
-      <span class="label">Calendário do mês</span>
+      <span class="label" id="calTitle">Calendário do mês</span>
       <ul id="calList"></ul>
     </nav>
 
@@ -45,7 +46,7 @@
       <header class="head">
         <div class="mark" id="mark"></div>
         <div>
-          <span class="eyebrow">Prévia do feed · Aprovação</span>
+          <span class="eyebrow" id="eyebrow">Prévia do feed · Aprovação</span>
           <h2 id="title"></h2>
         </div>
       </header>
@@ -67,9 +68,9 @@
   <div class="modal" id="modal"></div>
 </div>
 
-<script src="js/config.js?v=20260924a"></script>
-<script src="js/brand.js?v=20260924a"></script>
-<script src="js/client-api.js?v=20260924a"></script>
-<script src="js/app.js?v=20260924a"></script>
+<script src="js/config.js?v=20260925a"></script>
+<script src="js/brand.js?v=20260925a"></script>
+<script src="js/client-api.js?v=20260925a"></script>
+<script src="js/app.js?v=20260925a"></script>
 </body>
 </html>
