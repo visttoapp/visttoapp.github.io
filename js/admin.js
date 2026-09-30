@@ -279,7 +279,7 @@
     if (saved && clientes.find(c => c.id === saved)) $('selCliente').value = saved;
     await selectCliente($('selCliente').value);
   }
-  $('selCliente').onchange = e => { verEquipe(false); $('cardMes').hidden = true; $('cardCliente').hidden = true; selectCliente(e.target.value); };
+  $('selCliente').onchange = e => { verEquipe(false); $('cardMes').hidden = true; $('cardExportar').hidden = true; $('cardCliente').hidden = true; selectCliente(e.target.value); };
 
   async function selectCliente(id) {
     cliente = clientes.find(c => c.id === id) || null;
@@ -328,8 +328,8 @@
   // Anúncio de pesquisa do Google é só texto: some a área de arquivos.
   function ajustarArquivos() { $('fldArquivos').hidden = $('pTipo').value === 'texto'; }
   $('pTipo').onchange = ajustarArquivos;
-  $('selCanal').onchange = async e => { canal = e.target.value; verEquipe(false); $('cardMes').hidden = true; $('cardCliente').hidden = true; await aplicarCanal(); };
-  $('selMes').onchange = e => { verEquipe(false); selectMes(e.target.value); };
+  $('selCanal').onchange = async e => { canal = e.target.value; verEquipe(false); $('cardMes').hidden = true; $('cardExportar').hidden = true; $('cardCliente').hidden = true; await aplicarCanal(); };
+  $('selMes').onchange = e => { verEquipe(false); $('cardExportar').hidden = true; selectMes(e.target.value); };
 
   async function selectMes(id) {
     mes = meses.find(m => m.id === id) || null;
@@ -345,6 +345,8 @@
   function renderTop() {
     $('titulo').textContent = cliente ? `${cliente.nome}${mes ? ' · ' + mes.titulo : ''}` : (nivel >= 2 ? 'Comece criando um cliente' : 'Nenhum cliente liberado');
     $('btnNovoMes').hidden = !cliente;
+    $('btnExportar').hidden = !cliente;
+    if (!cliente) $('cardExportar').hidden = true;
     $('btnEditarCliente').hidden = !cliente || nivel < 2;
     $('btnImportPasta').hidden = !mes;
     $('btnExcluirMes').hidden = !mes || nivel < 2;
@@ -812,6 +814,115 @@
     } finally {
       botao.disabled = false; botao.textContent = texto;
     }
+  }
+
+  /* ---------- exportar retornos em PDF ---------- */
+  // Monta um relatório só para impressão e abre a janela do navegador, onde a pessoa escolhe
+  // "Salvar como PDF". Lê só o que o banco já deixa essa pessoa ver: nada muda de permissão.
+  const ACAO = { aprovado: 'Aprovado', ajuste: 'Ajuste pedido', comentario: 'Comentário' };
+  const semTags = t => String(t || '').replace(/<[^>]+>/g, '');
+  const dataHora = d => new Date(d).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' });
+  $('btnExportar').onclick = () => {
+    if (!cliente) return;
+    verEquipe(false);
+    const ads = canal !== 'instagram';
+    $('expAlcance').innerHTML = (mes ? `<option value="mes">${ads ? 'Esta campanha' : 'Este mês'}: ${esc(mes.titulo)}</option>` : '')
+      + `<option value="cliente">Tudo de ${esc(cliente.nome)} (todos os meses${podeAds ? ' e campanhas' : ''})</option>`;
+    $('msgExportar').textContent = ''; $('cardExportar').hidden = false; mostrar('cardExportar');
+  };
+  $('btnFecharExportar').onclick = () => $('cardExportar').hidden = true;
+  $('btnGerarPdf').onclick = async () => {
+    const b = $('btnGerarPdf'), msg = $('msgExportar');
+    b.disabled = true; msg.textContent = 'Juntando os retornos…'; msg.className = 'msg';
+    try {
+      await gerarRelatorio($('expAlcance').value, $('expFiltro').value);
+      msg.textContent = '';
+    } catch (e) {
+      msg.textContent = 'Não foi possível gerar o PDF: ' + (e.message || 'tente de novo.'); msg.className = 'msg err';
+    } finally { b.disabled = false; }
+  };
+
+  async function gerarRelatorio(alcance, filtro) {
+    const ordemCanal = { instagram: 0, meta: 1, google: 2 };
+    const lista = (alcance === 'mes' && mes ? [mes] : [...todosMeses])
+      .sort((a, b) => (ordemCanal[a.canal || 'instagram'] - ordemCanal[b.canal || 'instagram']) || b.ano_mes.localeCompare(a.ano_mes));
+    if (!lista.length) throw new Error('este cliente ainda não tem mês nem campanha.');
+    const todos = await run(sb.from('posts').select('*, aprovacoes(*)').in('mes_id', lista.map(m => m.id)).order('ordem'));
+    const doCliente = p => p.aprovacoes.some(a => (a.origem || 'cliente') === 'cliente');
+    const passa = p => filtro === 'todos' || (filtro === 'ajuste' ? p.status === 'ajuste' : doCliente(p));
+    const grupos = lista.map(m => ({
+      mes: m,
+      posts: todos.filter(p => p.mes_id === m.id).map(p => ({ ...p, aprovacoes: (p.aprovacoes || []).sort((x, y) => x.created_at.localeCompare(y.created_at)) })).filter(passa)
+    })).filter(g => g.posts.length);
+    if (!grupos.length) throw new Error(filtro === 'ajuste' ? 'nenhum post está com ajuste pedido.' : filtro === 'retorno' ? 'o cliente ainda não deixou nenhum retorno aqui.' : 'não há posts para exportar.');
+
+    // miniaturas: capa do reel ou todas as lâminas do carrossel; meses arquivados já não têm arte
+    const miniaturas = p => p.tipo === 'reel' ? [p.capa_url].filter(Boolean) : (p.slides || []);
+    const refs = grupos.filter(g => !g.mes.arquivado_em).flatMap(g => g.posts.flatMap(miniaturas));
+    let semArtes = false;
+    try { await MEDIA.prepare(sb, refs); } catch { semArtes = true; }
+
+    const postsTodos = grupos.flatMap(g => g.posts);
+    const conta = s => postsTodos.filter(p => p.status === s).length;
+    const comentarios = postsTodos.reduce((n, p) => n + p.aprovacoes.filter(a => a.acao !== 'aprovado' && (a.origem || 'cliente') === 'cliente').length, 0);
+    const escopo = alcance === 'mes' && mes ? mes.titulo : 'Todos os meses' + (podeAds ? ' e campanhas' : '');
+    const filtroTxt = { retorno: 'posts com retorno do cliente', ajuste: 'posts com ajuste pedido', todos: 'todos os posts' }[filtro];
+
+    const thumbs = (g, p) => {
+      if (p.tipo === 'texto') return '';
+      if (g.mes.arquivado_em) return '<p class="rel-aviso">Artes arquivadas: já saíram do servidor.</p>';
+      const refsPost = miniaturas(p);
+      if (!refsPost.length) return '';
+      const varias = refsPost.length > 1;
+      return `<div class="rel-thumbs">${refsPost.map((r, i) => {
+        const url = MEDIA.url(r);
+        const legenda = p.tipo === 'reel' ? 'capa do vídeo' : varias ? `lâmina ${i + 1}` : '';
+        return `<figure>${url && !semArtes ? `<img src="${esc(url)}" alt="">` : '<span class="sem-arte">arte indisponível</span>'}${legenda ? `<figcaption>${legenda}</figcaption>` : ''}</figure>`;
+      }).join('')}</div>`;
+    };
+    const historico = p => p.aprovacoes.length
+      ? `<ol class="rel-hist">${p.aprovacoes.map(a => {
+          const agencia_ = a.origem === 'agencia';
+          return `<li class="${esc(a.acao)}${agencia_ ? ' agencia' : ''}"><span class="quem"><b>${agencia_ ? 'Agência' : ACAO[a.acao] || esc(a.acao)}</b>${!agencia_ && a.autor ? ' · ' + esc(a.autor) : ''} · ${dataHora(a.created_at)}</span>${a.comentario ? `<p>${esc(a.comentario)}</p>` : ''}</li>`;
+        }).join('')}</ol>`
+      : '<p class="rel-vazio">Sem retorno do cliente até agora.</p>';
+    const bloco = (g, p) => {
+      const ads = (g.mes.canal || 'instagram') !== 'instagram';
+      const nome = ads ? semTags(p.titulo) || 'Anúncio' : p.tema || semTags(p.titulo) || 'Post';
+      const detalhes = [TIPO[p.tipo] + (p.tipo === 'carousel' && (p.slides || []).length > 1 ? ` · ${p.slides.length} lâminas` : ''),
+        p.data ? (ads ? 'início ' : 'dia ') + p.data : '', ads ? p.conjunto : semTags(p.titulo) !== nome ? semTags(p.titulo) : ''].filter(Boolean);
+      return `<article class="rel-post">
+        <div class="rel-post-head"><div><h3>${ads ? 'Anúncio' : 'Post'} ${esc(p.numero || '')} · ${esc(nome)}</h3><p>${detalhes.map(esc).join(' · ')}</p></div><span class="rel-status ${esc(p.status)}">${STATUS[p.status] || esc(p.status)}</span></div>
+        ${thumbs(g, p)}${historico(p)}</article>`;
+    };
+
+    document.getElementById('relatorio')?.remove();
+    const rel = document.createElement('div');
+    rel.id = 'relatorio';
+    rel.innerHTML = `<header class="rel-capa"><small>${esc(agencia?.nome || BRAND.NOME)} · retornos do cliente</small><h1>${esc(cliente.nome)}</h1>
+        <p>${esc(escopo)} · ${filtroTxt}</p>
+        <div class="rel-resumo"><span><b>${postsTodos.length}</b> post(s)</span><span><b>${conta('aprovado')}</b> aprovado(s)</span><span><b>${conta('ajuste')}</b> com ajuste</span><span><b>${conta('pendente')}</b> aguardando</span><span><b>${comentarios}</b> ajuste(s) e comentário(s) escritos</span></div></header>
+      ${grupos.map(g => `<section class="rel-mes"><h2>${esc(CANAIS[g.mes.canal || 'instagram'])} · ${esc(g.mes.titulo)}${g.mes.objetivo ? ' · ' + esc(g.mes.objetivo) : ''}</h2>${g.posts.map(p => bloco(g, p)).join('')}</section>`).join('')}
+      <footer class="rel-rodape">Gerado em ${dataHora(new Date())} pelo painel ${esc(BRAND.NOME)}.${semArtes ? ' Algumas artes não puderam ser carregadas.' : ''}</footer>`;
+    document.body.appendChild(rel);
+
+    // espera as miniaturas carregarem (até 20 s) para não sair PDF com buraco
+    $('msgExportar').textContent = 'Carregando as miniaturas…';
+    await Promise.race([
+      Promise.all([...rel.querySelectorAll('img')].map(img => img.complete ? null : new Promise(ok => {
+        img.onload = ok;
+        img.onerror = () => { const s = document.createElement('span'); s.className = 'sem-arte'; s.textContent = 'arte indisponível'; img.replaceWith(s); ok(); };
+      }))),
+      new Promise(ok => setTimeout(ok, 20000))
+    ]);
+
+    // o título da página vira o nome sugerido do arquivo PDF
+    const tituloAntes = document.title;
+    const limpar = () => { document.body.classList.remove('imprimindo'); document.title = tituloAntes; rel.remove(); };
+    document.title = `Retornos - ${cliente.nome} - ${escopo}`.replace(/[\\/:*?"<>|]/g, '-');
+    document.body.classList.add('imprimindo');
+    window.addEventListener('afterprint', limpar, { once: true });
+    window.print();
   }
 
   function renderLista() {

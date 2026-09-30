@@ -322,8 +322,8 @@ details#loteBox p{color:var(--text-2);font-size:13px;margin-bottom:10px}
 .login-foot{text-align:center;color:var(--text-3);font-size:12px;margin-bottom:24px}
 
 /* visão Equipe: esconde o fluxo de posts */
-body.vendo-equipe #summary,body.vendo-equipe #cardLink,body.vendo-equipe #cardPost,body.vendo-equipe .lista-card,body.vendo-equipe .page-head .actions,body.vendo-equipe #cardCliente,body.vendo-equipe #cardMes,body.vendo-equipe #cardImport{display:none!important}
-body.vendo-espaco #summary,body.vendo-espaco #cardLink,body.vendo-espaco #cardPost,body.vendo-espaco .lista-card,body.vendo-espaco .page-head .actions,body.vendo-espaco #cardCliente,body.vendo-espaco #cardMes,body.vendo-espaco #cardImport,body.vendo-espaco #accessCard{display:none!important}
+body.vendo-equipe #summary,body.vendo-equipe #cardLink,body.vendo-equipe #cardPost,body.vendo-equipe .lista-card,body.vendo-equipe .page-head .actions,body.vendo-equipe #cardCliente,body.vendo-equipe #cardMes,body.vendo-equipe #cardImport,body.vendo-equipe #cardExportar{display:none!important}
+body.vendo-espaco #cardExportar,body.vendo-espaco #summary,body.vendo-espaco #cardLink,body.vendo-espaco #cardPost,body.vendo-espaco .lista-card,body.vendo-espaco .page-head .actions,body.vendo-espaco #cardCliente,body.vendo-espaco #cardMes,body.vendo-espaco #cardImport,body.vendo-espaco #accessCard{display:none!important}
 
 /* troca obrigatória de senha */
 body.trocar-senha .main .wrap>:not(#cardSenha),body.trocar-senha .sidebar .side-section,body.trocar-senha #btnFecharSenha,body.trocar-senha #btnMinhaSenha{display:none!important}
@@ -506,3 +506,47 @@ body[data-tema="escuro"] .txtad b{color:#8ab4f8}
 @media (max-width:640px){
   .adlist{grid-template-columns:1fr}
 }
+
+/* relatório de retornos: existe só na impressão (Salvar como PDF). Cores fixas, para sair
+   igual em qualquer tema de agência, inclusive o escuro. */
+#relatorio{display:none}
+@media print{
+  @page{size:A4;margin:14mm 12mm}
+  html:has(body.imprimindo),body.imprimindo{background:#fff!important;color:#1d1d1b;color-scheme:light}
+  body.imprimindo>:not(#relatorio){display:none!important}
+  body.imprimindo #relatorio{display:block}
+}
+#relatorio{font-family:Inter,system-ui,sans-serif;color:#1d1d1b;font-size:10pt;line-height:1.45;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+.rel-capa{border-bottom:2px solid #1d1d1b;padding-bottom:10pt;margin-bottom:14pt}
+.rel-capa small{display:block;color:#6b6b66;font-size:8.5pt;text-transform:uppercase;letter-spacing:.06em}
+.rel-capa h1{font-size:20pt;line-height:1.2;margin:4pt 0 2pt;font-weight:700}
+.rel-capa p{color:#4a4a45;margin:0}
+.rel-resumo{display:flex;flex-wrap:wrap;gap:6pt 16pt;margin-top:8pt;font-size:9pt;color:#4a4a45}
+.rel-resumo b{color:#1d1d1b;font-size:11pt}
+.rel-mes{margin-top:16pt}
+.rel-mes>h2{font-size:13pt;font-weight:700;margin:0 0 8pt;padding:4pt 8pt;background:#f1f0ec;border-radius:4pt;break-after:avoid}
+.rel-post{border:1px solid #deddd8;border-radius:6pt;padding:9pt 10pt;margin-bottom:9pt;break-inside:avoid}
+.rel-post-head{display:flex;justify-content:space-between;align-items:flex-start;gap:10pt}
+.rel-post-head h3{font-size:11pt;font-weight:700;margin:0}
+.rel-post-head p{margin:1pt 0 0;color:#6b6b66;font-size:8.5pt}
+.rel-status{flex:none;font-size:8pt;font-weight:600;padding:1.5pt 6pt;border-radius:3pt;border:1px solid #cfcfca;background:#f1f0ec;color:#4a4a45}
+.rel-status.aprovado{background:#eaf3e4;border-color:#bfd8ad;color:#3f6b2a}
+.rel-status.ajuste{background:#fbf0dc;border-color:#ebcf95;color:#8a5a12}
+.rel-thumbs{display:flex;flex-wrap:wrap;gap:5pt;margin-top:7pt}
+.rel-thumbs figure{margin:0;width:26mm}
+.rel-thumbs img{display:block;width:26mm;height:32.5mm;object-fit:cover;border-radius:3pt;background:#f1f0ec;border:1px solid #deddd8}
+.rel-thumbs figcaption{font-size:7.5pt;color:#6b6b66;text-align:center;margin-top:1pt}
+.rel-thumbs .sem-arte{display:flex;align-items:center;justify-content:center;width:26mm;height:32.5mm;border:1px dashed #cfcfca;border-radius:3pt;font-size:7pt;color:#8a8a85;text-align:center;padding:3pt;box-sizing:border-box}
+.rel-aviso{margin-top:6pt;font-size:8.5pt;color:#8a8a85}
+.rel-hist{list-style:none;padding:0;margin:8pt 0 0;display:flex;flex-direction:column;gap:4pt}
+.rel-hist li{padding:4pt 8pt;border-left:3px solid #cfcfca;background:#f7f6f3;border-radius:0 3pt 3pt 0;break-inside:avoid}
+.rel-hist li.aprovado{border-left-color:#5f8f45}
+.rel-hist li.ajuste{border-left-color:#c58a26}
+.rel-hist li.agencia{background:#fff;color:#6b6b66}
+.rel-hist .quem{font-size:8.5pt;color:#6b6b66}
+.rel-hist .quem b{color:#1d1d1b}
+.rel-hist li.aprovado .quem b{color:#3f6b2a}
+.rel-hist li.ajuste .quem b{color:#8a5a12}
+.rel-hist p{margin:2pt 0 0;white-space:pre-line}
+.rel-vazio{color:#8a8a85;font-size:9pt;margin:8pt 0 0}
+.rel-rodape{margin-top:14pt;padding-top:6pt;border-top:1px solid #deddd8;font-size:8pt;color:#8a8a85}

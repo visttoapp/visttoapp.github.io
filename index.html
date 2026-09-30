@@ -9,9 +9,9 @@
 <link rel="icon" href="assets/vistto.svg" type="image/svg+xml">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Cormorant+Garamond:wght@500&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/style.css?v=20260925a"><link rel="stylesheet" href="css/agencies.css?v=20260925a">
+<link rel="stylesheet" href="css/style.css?v=20260930a"><link rel="stylesheet" href="css/agencies.css?v=20260930a">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="js/config.js?v=20260925a"></script>
+<script src="js/config.js?v=20260930a"></script>
 </head>
 <body class="admin" data-tema="neutro"><script>if (new URLSearchParams(location.search).has("t") || new URLSearchParams(location.hash.slice(1)).has("t")) location.replace("c" + location.search + location.hash);</script>
 
@@ -86,6 +86,7 @@
         <div class="actions">
           <select id="filterStatus" aria-label="Filtrar posts"><option value="">Todos os status</option><option value="pendente">Aguardando</option><option value="ajuste">Ajustes solicitados</option><option value="aprovado">Aprovados</option></select>
           <button class="btn" id="btnImportPasta" hidden><svg class="i" viewBox="0 0 16 16"><path d="M2 5.5A1.5 1.5 0 0 1 3.5 4h2l1.2 1.5h5.8A1.5 1.5 0 0 1 14 7v4.5A1.5 1.5 0 0 1 12.5 13h-9A1.5 1.5 0 0 1 2 11.5z"/></svg>Importar pasta</button>
+          <button class="btn" id="btnExportar" hidden><svg class="i" viewBox="0 0 16 16"><path d="M4 1.5h5.5L13 5v8.5a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1v-11a1 1 0 0 1 1-1z"/><path d="M9.5 1.5V5H13M8 7.5v4.5M6 10l2 2 2-2"/></svg>Exportar PDF</button>
           <button class="btn" id="btnEditarCliente" hidden><svg class="i" viewBox="0 0 16 16"><path d="M11 2.5l2.5 2.5L5.5 13H3v-2.5z"/></svg>Editar cliente</button>
           <button class="btn" id="btnRefresh"><svg class="i" viewBox="0 0 16 16"><path d="M13.5 8a5.5 5.5 0 1 1-1.6-3.9M13.5 2.5v3h-3"/></svg>Atualizar aprovações</button>
         </div>
@@ -178,6 +179,21 @@
         <div class="msg" id="msgImport"></div>
       </div>
 
+      <!-- EXPORTAR RETORNOS -->
+      <div class="card" id="cardExportar" hidden>
+        <div class="card-head"><div><h4>Exportar retornos em PDF</h4><p>Junta num arquivo cada post com as miniaturas e tudo o que o cliente disse: aprovações, ajustes e comentários, com autor e data. Na janela que abrir, escolha <b>Salvar como PDF</b>.</p></div></div>
+        <div class="form-grid">
+          <div class="field"><label class="label" for="expAlcance">O que entra</label><select id="expAlcance"></select></div>
+          <div class="field"><label class="label" for="expFiltro">Quais posts</label><select id="expFiltro">
+            <option value="retorno">Só os que têm retorno do cliente</option>
+            <option value="ajuste">Só os que estão com ajuste pedido</option>
+            <option value="todos">Todos, com ou sem retorno</option>
+          </select></div>
+        </div>
+        <div class="actions"><button class="btn primary" id="btnGerarPdf">Gerar PDF</button><button class="btn ghost" id="btnFecharExportar">Cancelar</button></div>
+        <div class="msg" id="msgExportar" role="status"></div>
+      </div>
+
       <div class="summary" id="summary"></div>
 
       <!-- PUBLICAÇÃO -->
@@ -230,6 +246,6 @@
   </main>
 </div>
 
-<script src="js/brand.js?v=20260925a"></script><script src="js/media.js?v=20260925a"></script><script src="js/importar.js?v=20260925a"></script><script src="js/admin.js?v=20260925a"></script>
+<script src="js/brand.js?v=20260930a"></script><script src="js/media.js?v=20260930a"></script><script src="js/importar.js?v=20260930a"></script><script src="js/admin.js?v=20260930a"></script>
 </body>
 </html>
