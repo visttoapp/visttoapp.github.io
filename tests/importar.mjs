@@ -97,4 +97,65 @@ r = PASTA.analisar(arq(['carrosseis/01 tema/leia.txt']));
 assert.equal(r.posts.length, 0); ok();
 assert.equal(r.ignorados.length, 1); ok();
 
-console.log('PASS:', checks, 'checks do leitor de pasta: carrosséis, estéticos, reels, ordem, número e descartes.');
+// ---------- subir ajustes ----------
+const post = (numero, tipo, n) => ({ numero, tipo, slides: tipo === 'reel' || tipo === 'texto' ? [] : Array.from({ length: n }, (_, i) => `r2:a/${numero}-${i + 1}.jpg`), capa_url: tipo === 'reel' ? 'r2:a/capa.jpg' : null });
+const numeros = ['01', '02', '03', '05', '7'];
+const ajustar = caminhos => PASTA.analisar(PASTA.prepararAjustes(arq(caminhos), numeros)).posts;
+const refs = n => Array.from({ length: n }, (_, i) => `novo${i + 1}`);
+
+// exportação do Figma: frames "03/1", "03/3" viram a pasta 03; "05" vira arte solta. A pasta escolhida não vira post.
+let g = ajustar(['GBEX ajustes/03/1.png', 'GBEX ajustes/03/3@2x.png', 'GBEX ajustes/05.png']);
+assert.equal(g.map(x => `${x.numero}|${x.arquivos.length}`).join(' '), '03|2 05|1'); ok();
+// a pasta escolhida é o próprio post
+g = ajustar(['03/1.png', '03/2.png']);
+assert.equal(g.length, 1); ok();
+assert.equal(g[0].numero, '03'); ok();
+// número com ou sem zero à esquerda
+assert.ok(PASTA.mesmoNumero('7', '07')); ok();
+assert.ok(!PASTA.mesmoNumero('', '')); ok();
+// lâmina: último número do nome, sem o @2x
+assert.equal(PASTA.laminaDe('3@2x.png'), 3); ok();
+assert.equal(PASTA.laminaDe('lamina 12.jpg'), 12); ok();
+assert.equal(PASTA.laminaDe('capa.jpg'), null); ok();
+
+// carrossel de 5, vieram as lâminas 1 e 3: troca só elas, na posição certa
+g = ajustar(['x/03/1.png', 'x/03/3@2x.png']);
+let plano = PASTA.planejarAjuste(g[0], post('03', 'carousel', 5));
+assert.equal(plano.modo, 'laminas'); ok();
+assert.equal(plano.texto, 'troca as lâminas 1 e 3 (as outras 3 continuam)'); ok();
+assert.deepEqual(plano.montar(refs(2)).slides, ['novo1', 'r2:a/03-2.jpg', 'novo2', 'r2:a/03-4.jpg', 'r2:a/03-5.jpg']); ok();
+// a pessoa escolhe substituir o carrossel inteiro
+plano = PASTA.planejarAjuste(g[0], post('03', 'carousel', 5), 'tudo');
+assert.deepEqual(plano.montar(refs(2)), { slides: ['novo1', 'novo2'], tipo: 'carousel' }); ok();
+assert.deepEqual(plano.avisos, ['o carrossel passa de 5 para 2 lâminas']); ok();
+// lâmina que não existe
+g = ajustar(['x/03/7.png']);
+plano = PASTA.planejarAjuste(g[0], post('03', 'carousel', 5));
+assert.equal(plano.ok, false); ok();
+assert.match(plano.erro, /não existe a lâmina 7/); ok();
+// todas as lâminas de novo: substitui o conjunto
+g = ajustar(['x/03/1.png', 'x/03/2.png', 'x/03/3.png']);
+plano = PASTA.planejarAjuste(g[0], post('03', 'carousel', 3));
+assert.equal(plano.modo, 'tudo'); ok();
+assert.equal(plano.texto, 'substitui as 3 lâminas por 3 lâminas novas'); ok();
+assert.deepEqual(plano.avisos, []); ok();
+// arte única
+g = ajustar(['x/05.png']);
+plano = PASTA.planejarAjuste(g[0], post('05', 'image', 1));
+assert.equal(plano.texto, 'troca a arte'); ok();
+assert.deepEqual(plano.montar(['n']), { slides: ['n'], tipo: 'image' }); ok();
+// arte solta num carrossel: troca a lâmina 1, não apaga as outras
+plano = PASTA.planejarAjuste(g[0], post('05', 'carousel', 4));
+assert.deepEqual(plano.montar(['n']).slides, ['n', 'r2:a/05-2.jpg', 'r2:a/05-3.jpg', 'r2:a/05-4.jpg']); ok();
+// reel: imagem troca só a capa; vídeo troca o vídeo e mantém a capa
+plano = PASTA.planejarAjuste(g[0], post('05', 'reel'));
+assert.deepEqual(plano.montar(['n']), { capa_url: 'n' }); ok();
+g = ajustar(['x/07 reel.mp4']);
+plano = PASTA.planejarAjuste(g[0], post('7', 'reel'));
+assert.deepEqual(plano.montar(['v']), { video_url: 'v' }); ok();
+// vídeo em post que não é reel, anúncio de texto e post não escolhido são recusados
+assert.equal(PASTA.planejarAjuste(g[0], post('7', 'image', 1)).ok, false); ok();
+assert.equal(PASTA.planejarAjuste(ajustar(['x/05.png'])[0], post('05', 'texto')).ok, false); ok();
+assert.equal(PASTA.planejarAjuste(g[0], null).ok, false); ok();
+
+console.log('PASS:', checks, 'checks do leitor de pasta: carrosséis, estéticos, reels, ordem, número, descartes e ajustes.');

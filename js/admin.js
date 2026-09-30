@@ -279,7 +279,7 @@
     if (saved && clientes.find(c => c.id === saved)) $('selCliente').value = saved;
     await selectCliente($('selCliente').value);
   }
-  $('selCliente').onchange = e => { verEquipe(false); $('cardMes').hidden = true; $('cardExportar').hidden = true; $('cardCliente').hidden = true; selectCliente(e.target.value); };
+  $('selCliente').onchange = e => { verEquipe(false); fecharFerramentas(); $('cardMes').hidden = true; $('cardCliente').hidden = true; selectCliente(e.target.value); };
 
   async function selectCliente(id) {
     cliente = clientes.find(c => c.id === id) || null;
@@ -328,8 +328,8 @@
   // Anúncio de pesquisa do Google é só texto: some a área de arquivos.
   function ajustarArquivos() { $('fldArquivos').hidden = $('pTipo').value === 'texto'; }
   $('pTipo').onchange = ajustarArquivos;
-  $('selCanal').onchange = async e => { canal = e.target.value; verEquipe(false); $('cardMes').hidden = true; $('cardExportar').hidden = true; $('cardCliente').hidden = true; await aplicarCanal(); };
-  $('selMes').onchange = e => { verEquipe(false); $('cardExportar').hidden = true; selectMes(e.target.value); };
+  $('selCanal').onchange = async e => { canal = e.target.value; verEquipe(false); fecharFerramentas(); $('cardMes').hidden = true; $('cardCliente').hidden = true; await aplicarCanal(); };
+  $('selMes').onchange = e => { verEquipe(false); fecharFerramentas(); selectMes(e.target.value); };
 
   async function selectMes(id) {
     mes = meses.find(m => m.id === id) || null;
@@ -346,7 +346,8 @@
     $('titulo').textContent = cliente ? `${cliente.nome}${mes ? ' · ' + mes.titulo : ''}` : (nivel >= 2 ? 'Comece criando um cliente' : 'Nenhum cliente liberado');
     $('btnNovoMes').hidden = !cliente;
     $('btnExportar').hidden = !cliente;
-    if (!cliente) $('cardExportar').hidden = true;
+    $('btnAjustes').hidden = !mes;
+    if (!cliente) fecharFerramentas(); else if (!mes) { $('cardImport').hidden = true; $('cardAjustes').hidden = true; }
     $('btnEditarCliente').hidden = !cliente || nivel < 2;
     $('btnImportPasta').hidden = !mes;
     $('btnExcluirMes').hidden = !mes || nivel < 2;
@@ -371,7 +372,7 @@
   $('btnCopy').onclick = async () => { if(!cliente?.token || !mes?.publicado) return alert('Publique o mês antes de copiar o link.'); await navigator.clipboard.writeText($('linkCliente').textContent); $('btnCopy').textContent = 'copiado!'; setTimeout(() => $('btnCopy').textContent = 'copiar link', 1500); };
 
   /* ---------- cliente ---------- */
-  $('btnNovoCliente').onclick = () => { verEquipe(false); fillCliente(null); $('cardCliente').hidden = false; mostrar('cardCliente'); };
+  $('btnNovoCliente').onclick = () => { verEquipe(false); fecharFerramentas(); fillCliente(null); $('cardCliente').hidden = false; mostrar('cardCliente'); };
   $('btnFecharCliente').onclick = () => $('cardCliente').hidden = true;
   function fillCliente(c) {
     $('cNome').value = c ? c.nome : ''; $('cSlug').value = c ? c.slug : ''; $('cHandle').value = c ? c.handle || '' : '';
@@ -413,7 +414,7 @@
     await loadClientes();
   };
   $('btnEditarCliente').onclick = () => $('titulo').onclick();
-  $('titulo').onclick = () => { if (cliente && nivel >= 2) { verEquipe(false); fillCliente(cliente); $('cardCliente').hidden = false; mostrar('cardCliente'); } };
+  $('titulo').onclick = () => { if (cliente && nivel >= 2) { verEquipe(false); fecharFerramentas(); fillCliente(cliente); $('cardCliente').hidden = false; mostrar('cardCliente'); } };
 
   dropzone($('dropAvatar'), async fl => {
     const url = await upload(fl[0], `clientes/${$('cSlug').value || 'novo'}/avatar`);
@@ -433,7 +434,7 @@
 
   /* ---------- mês ---------- */
   $('btnNovoMes').onclick = () => {
-    verEquipe(false);
+    verEquipe(false); fecharFerramentas();
     if (!cliente) return alert('Crie um cliente primeiro.');
     const ads = canal !== 'instagram';
     const d = new Date(); if (!ads) d.setMonth(d.getMonth() + 1);
@@ -664,15 +665,25 @@
     if (cliente) await selectCliente(cliente.id);
   }
 
+  /* ---------- ferramentas do mês: importar, subir ajustes, exportar ---------- */
+  // Um quadro aberto por vez; o botão do topo fica marcado enquanto o dele está aberto.
+  const FERRAMENTAS = ['cardImport', 'cardAjustes', 'cardExportar'];
+  function marcarFerramenta(id) { document.querySelectorAll('[data-painel]').forEach(b => b.classList.toggle('active', b.dataset.painel === id)); }
+  function abrirFerramenta(id) {
+    verEquipe(false); $('cardCliente').hidden = true; $('cardMes').hidden = true;
+    FERRAMENTAS.forEach(f => $(f).hidden = f !== id);
+    marcarFerramenta(id); mostrar(id);
+  }
+  function fecharFerramentas() { FERRAMENTAS.forEach(f => $(f).hidden = true); marcarFerramenta(null); }
+  const alternar = (id, abrir) => () => { if (!$(id).hidden) return fecharFerramentas(); abrir(); abrirFerramenta(id); };
+
   /* ---------- importar a pasta do mês ---------- */
   let importPosts = [];
-  $('btnImportPasta').onclick = () => {
-    if (!mes) return alert('Escolha ou crie um mês primeiro.');
-    verEquipe(false); importPosts = []; renderImport();
+  $('btnImportPasta').onclick = alternar('cardImport', () => {
+    importPosts = []; renderImport();
     $('msgImport').textContent = ''; $('msgImport').className = 'msg';
-    $('cardImport').hidden = false; mostrar('cardImport');
-  };
-  $('btnFecharImport').onclick = () => { $('cardImport').hidden = true; importPosts = []; renderImport(); };
+  });
+  $('btnFecharImport').onclick = () => { fecharFerramentas(); importPosts = []; renderImport(); };
   $('dropPasta').onclick = () => {
     const inp = document.createElement('input');
     inp.type = 'file'; inp.multiple = true; inp.webkitdirectory = true;
@@ -747,7 +758,7 @@
       }
       $('msgImport').textContent = `${criados} post(s) criado(s) na ordem da pasta. Agora preencha tema, dia e legenda de cada um, em "editar", antes de publicar o mês.`;
       $('msgImport').className = 'msg ok';
-      importPosts = []; renderImport(); $('cardImport').hidden = true;
+      importPosts = []; renderImport(); fecharFerramentas();
       await selectMes(mes.id);
     } catch (e) {
       $('msgImport').textContent = (criados ? `${criados} post(s) criado(s) antes do erro. ` : '') + (e.message || 'Não foi possível importar.');
@@ -756,6 +767,127 @@
     } finally {
       $('btnImportar').disabled = false; $('btnFecharImport').disabled = false;
     }
+  };
+
+  /* ---------- subir ajustes pela pasta ---------- */
+  // Troca as artes de posts que já existem, casando pelo número. Tema, legenda e histórico ficam;
+  // as artes antigas viram "sem dono" e saem na limpeza.
+  let ajustes = [], previas = [];
+  const rotuloPost = p => `${canal === 'instagram' ? 'Post' : 'Anúncio'} ${p.numero || '—'}${(p.tema || semTags(p.titulo)) ? ' · ' + (p.tema || semTags(p.titulo)) : ''}`;
+  function limparPrevias() { previas.forEach(u => URL.revokeObjectURL(u)); previas = []; }
+  function previa(arquivo) { const u = URL.createObjectURL(arquivo); previas.push(u); return u; }
+  $('btnAjustes').onclick = alternar('cardAjustes', () => {
+    limparPrevias(); ajustes = []; renderAjustes();
+    $('msgAjustes').textContent = ''; $('msgAjustes').className = 'msg';
+  });
+  $('btnFecharAjustes').onclick = () => { fecharFerramentas(); limparPrevias(); ajustes = []; renderAjustes(); };
+  $('dropAjustes').onclick = () => {
+    if ($('dropAjustes').classList.contains('travado')) return;
+    const inp = document.createElement('input');
+    inp.type = 'file'; inp.multiple = true; inp.webkitdirectory = true;
+    inp.onchange = () => lerAjustes([...inp.files]);
+    inp.click();
+  };
+  function lerAjustes(fl) {
+    if (!fl.length) return;
+    limparPrevias();
+    const lista = PASTA.prepararAjustes(fl.map(f => ({ caminho: f.webkitRelativePath || f.name, nome: f.name, arquivo: f })), posts.map(p => p.numero));
+    const { posts: grupos, ignorados } = PASTA.analisar(lista);
+    const usados = new Set();
+    ajustes = grupos.map(g => {
+      const deduzido = g.avisos.includes('número deduzido da ordem');
+      const alvo = deduzido ? null : posts.find(p => PASTA.mesmoNumero(p.numero, g.numero));
+      const repetido = !!alvo && usados.has(alvo.id);
+      if (alvo) usados.add(alvo.id);
+      const capa = g.arquivos.find(a => a.imagem);
+      return { grupo: g, alvo: alvo?.id || '', modo: null, previa: capa ? previa(capa.arquivo) : '', repetido,
+        usar: !!alvo && !repetido && alvo.status !== 'aprovado' };
+    });
+    const partes = [`${grupos.length} conjunto(s) de arte em ${fl.length} arquivo(s).`];
+    const soltos = ajustes.filter(a => !a.alvo).length;
+    if (soltos) partes.push(`${soltos} sem post com o mesmo número: escolha o post na lista ou deixe desmarcado.`);
+    if (ignorados.length) partes.push(`${ignorados.length} arquivo(s) fora do padrão foram deixados de lado.`);
+    $('msgAjustes').textContent = partes.join(' ');
+    $('msgAjustes').className = grupos.length ? 'msg' : 'msg err';
+    renderAjustes();
+  }
+  const planoDe = a => PASTA.planejarAjuste(a.grupo, posts.find(p => p.id === a.alvo), a.modo);
+  const filaAjustes = () => ajustes.filter(a => a.usar && a.alvo && planoDe(a).ok);
+  function renderAjustes() {
+    const L = $('ajustesLista');
+    $('ajustesAcoes').hidden = !ajustes.length;
+    if (!ajustes.length) { L.innerHTML = ''; return; }
+    L.innerHTML = ajustes.map((a, i) => {
+      const p = posts.find(x => x.id === a.alvo), plano = planoDe(a);
+      const capaAtual = p && (p.capa_url || (p.slides || [])[0]);
+      const avisos = [...(plano.ok ? plano.avisos : [plano.erro]),
+        ...(a.repetido ? ['outro conjunto já vai para este post'] : []),
+        ...(p?.status === 'aprovado' ? ['o cliente já aprovou este post'] : [])];
+      const modo = plano.modo || a.modo;
+      return `<div class="aj ${a.usar && plano.ok ? '' : 'off'}">
+        <label class="check" title="Usar este conjunto"><input type="checkbox" data-aj-usar="${i}" aria-label="Usar" ${a.usar && plano.ok ? 'checked' : ''} ${plano.ok ? '' : 'disabled'}></label>
+        <div class="aj-troca" aria-hidden="true">
+          <span class="aj-mini">${capaAtual ? `<img src="${esc(MEDIA.url(capaAtual))}" alt="">` : ''}</span>
+          <svg class="i" viewBox="0 0 16 16"><path d="M3 8h10M9.5 4.5 13 8l-3.5 3.5"/></svg>
+          <span class="aj-mini nova">${a.previa ? `<img src="${esc(a.previa)}" alt="">` : '<small>vídeo</small>'}${a.grupo.arquivos.length > 1 ? `<b>${a.grupo.arquivos.length}</b>` : ''}</span>
+        </div>
+        <div class="aj-info">
+          <div class="aj-linha">
+            <small class="aj-origem" title="${esc(a.grupo.origem)}">${esc(a.grupo.origem.split('/').pop())}</small>
+            <select data-aj-alvo="${i}" aria-label="Post que recebe estas artes"><option value="">Escolha o post…</option>${posts.map(x => `<option value="${x.id}" ${x.id === a.alvo ? 'selected' : ''}>${esc(rotuloPost(x))}</option>`).join('')}</select>
+            ${p ? `<span class="pill ${p.status}">${STATUS[p.status]}</span>` : ''}
+          </div>
+          ${plano.ok ? `<p class="aj-plano">${esc(plano.texto)}</p>` : ''}
+          ${plano.podeLaminas ? `<div class="seg" role="group" aria-label="Como trocar"><button type="button" data-aj-modo="${i}|laminas" class="${modo === 'laminas' ? 'on' : ''}">Só estas lâminas</button><button type="button" data-aj-modo="${i}|tudo" class="${modo === 'tudo' ? 'on' : ''}">Carrossel inteiro</button></div>` : ''}
+          ${avisos.map(t => `<small class="alerta">${esc(t)}</small>`).join('')}
+        </div>
+      </div>`;
+    }).join('');
+    L.querySelectorAll('[data-aj-usar]').forEach(c => c.onchange = () => { ajustes[+c.dataset.ajUsar].usar = c.checked; renderAjustes(); });
+    L.querySelectorAll('[data-aj-alvo]').forEach(s => s.onchange = () => {
+      const a = ajustes[+s.dataset.ajAlvo]; a.alvo = s.value; a.modo = null; a.repetido = false;
+      a.usar = !!a.alvo && planoDe(a).ok; renderAjustes();
+    });
+    L.querySelectorAll('[data-aj-modo]').forEach(b => b.onclick = () => {
+      const [i, m] = b.dataset.ajModo.split('|'), a = ajustes[+i];
+      a.modo = m; a.usar = planoDe(a).ok; renderAjustes();
+    });
+    const n = filaAjustes().length;
+    $('btnAplicarAjustes').textContent = n ? `Substituir artes de ${n} post${n > 1 ? 's' : ''}` : 'Nada marcado para substituir';
+    $('btnAplicarAjustes').disabled = !n;
+  }
+  $('btnAplicarAjustes').onclick = async () => {
+    const fila = filaAjustes();
+    if (!mes || !fila.length) return;
+    const avisar = $('chkAvisar').checked;
+    const total = fila.reduce((n, a) => n + planoDe(a).envios.length, 0);
+    let feitos = 0, trocados = 0;
+    const travar = v => { $('btnAplicarAjustes').disabled = v; $('btnFecharAjustes').disabled = v; $('dropAjustes').classList.toggle('travado', v); };
+    travar(true);
+    try {
+      for (const a of fila) {
+        const p = posts.find(x => x.id === a.alvo), plano = planoDe(a);
+        const refs = [];
+        for (const f of plano.envios) {
+          $('msgAjustes').textContent = `Enviando ${++feitos} de ${total} arquivo(s)… (${rotuloPost(p)})`; $('msgAjustes').className = 'msg';
+          const ref = await upload(f.arquivo, `${cliente.slug}/${mes.ano_mes}`);
+          if (!ref) throw new Error('Um arquivo não subiu. Os posts já trocados continuam trocados.');
+          refs.push(ref);
+        }
+        await run(sb.from('posts').update(plano.montar(refs)).eq('id', p.id));
+        if (avisar && p.status !== 'pendente') await run(sb.rpc('marcar_ajustado', { p_post: p.id }));
+        trocados++;
+        ajustes = ajustes.filter(x => x !== a);   // se algo falhar depois, este não sobe de novo
+      }
+      limparPrevias(); ajustes = []; renderAjustes();
+      await selectMes(mes.id);
+      $('msgAjustes').textContent = `Pronto: ${trocados} post(s) com arte nova.${avisar ? ' Os que tinham retorno do cliente voltaram para Aguardando.' : ''}`;
+      $('msgAjustes').className = 'msg ok';
+    } catch (e) {
+      $('msgAjustes').textContent = (trocados ? `${trocados} post(s) trocado(s) antes do erro. ` : '') + (e.message || 'Não foi possível subir os ajustes.');
+      $('msgAjustes').className = 'msg err';
+      if (trocados) await selectMes(mes.id);
+    } finally { travar(false); renderAjustes(); }
   };
 
   /* ---------- download dos originais ---------- */
@@ -822,15 +954,13 @@
   const ACAO = { aprovado: 'Aprovado', ajuste: 'Ajuste pedido', comentario: 'Comentário' };
   const semTags = t => String(t || '').replace(/<[^>]+>/g, '');
   const dataHora = d => new Date(d).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' });
-  $('btnExportar').onclick = () => {
-    if (!cliente) return;
-    verEquipe(false);
+  $('btnExportar').onclick = alternar('cardExportar', () => {
     const ads = canal !== 'instagram';
     $('expAlcance').innerHTML = (mes ? `<option value="mes">${ads ? 'Esta campanha' : 'Este mês'}: ${esc(mes.titulo)}</option>` : '')
       + `<option value="cliente">Tudo de ${esc(cliente.nome)} (todos os meses${podeAds ? ' e campanhas' : ''})</option>`;
-    $('msgExportar').textContent = ''; $('cardExportar').hidden = false; mostrar('cardExportar');
-  };
-  $('btnFecharExportar').onclick = () => $('cardExportar').hidden = true;
+    $('msgExportar').textContent = '';
+  });
+  $('btnFecharExportar').onclick = fecharFerramentas;
   $('btnGerarPdf').onclick = async () => {
     const b = $('btnGerarPdf'), msg = $('msgExportar');
     b.disabled = true; msg.textContent = 'Juntando os retornos…'; msg.className = 'msg';

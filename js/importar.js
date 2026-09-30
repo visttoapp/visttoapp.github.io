@@ -108,5 +108,62 @@ window.PASTA = (() => {
     };
   }
 
-  return { analisar };
+  /* ---------- subir ajustes: casar a pasta de artes corrigidas com os posts que já existem ---------- */
+  const mesmoNumero = (a, b) => {
+    const k = v => { const t = String(v == null ? '' : v).trim(); return /^\d+$/.test(t) ? String(+t) : chave(t); };
+    return k(a) !== '' && k(a) === k(b);
+  };
+  // O navegador põe a pasta escolhida no começo de cada caminho. Arte solta nela é um post solto,
+  // não um carrossel com o nome da pasta, a não ser que a própria pasta seja um post ("03").
+  function prepararAjustes(arquivos, numeros) {
+    const partes = arquivos.map(a => String(a.caminho || a.nome).split('/').filter(Boolean));
+    const raiz = partes[0] && partes[0].length > 1 ? partes[0][0] : '';
+    const n = numeroDe(raiz).numero;
+    if (n && partes.every(p => p.length === 2) && numeros.some(x => mesmoNumero(x, n))) return arquivos;
+    return arquivos.map((a, i) => partes[i].length === 2 ? { ...a, caminho: partes[i][1] } : a);
+  }
+  // Número da lâmina: o último número do nome, ignorando o "@2x" que o Figma acrescenta.
+  function laminaDe(nome) {
+    const m = base(nome).replace(/@\d+(\.\d+)?x$/i, '').match(/(\d+)(?!.*\d)/);
+    return m ? +m[1] : null;
+  }
+  const juntar = ns => ns.length < 2 ? String(ns[0]) : ns.slice(0, -1).join(', ') + ' e ' + ns[ns.length - 1];
+
+  // O que acontece com o post se estas artes entrarem. modo: 'laminas' troca só as lâminas com
+  // aquele número; 'tudo' substitui o conjunto inteiro. Sem modo, escolhe o mais seguro.
+  // montar(refs) recebe as referências já enviadas, na ordem de envios, e devolve o que gravar.
+  function planejarAjuste(grupo, post, modo) {
+    const erro = t => ({ ok: false, erro: t, avisos: [] });
+    if (!post) return erro('escolha o post que recebe estas artes');
+    const video = grupo.arquivos.find(a => a.video), imagens = grupo.arquivos.filter(a => a.imagem);
+    if (post.tipo === 'texto') return erro('anúncio só de texto não tem arte');
+    if (video && post.tipo !== 'reel') return erro('tem vídeo, mas o post não é reel');
+    if (post.tipo === 'reel') {
+      const avisos = imagens.length > 1 ? ['mais de uma imagem: usei só a primeira como capa'] : [];
+      if (video) return { ok: true, modo: 'reel', avisos, texto: imagens.length ? 'troca o vídeo e a capa' : 'troca o vídeo (a capa continua)',
+        envios: [video, ...imagens.slice(0, 1)], montar: r => (imagens.length ? { video_url: r[0], capa_url: r[1] } : { video_url: r[0] }) };
+      return { ok: true, modo: 'reel', avisos, texto: 'troca a capa do vídeo', envios: imagens.slice(0, 1), montar: r => ({ capa_url: r[0] }) };
+    }
+    const atuais = (post.slides || []).length;
+    const solta = grupo.arquivos.length === 1 && grupo.arquivos[0].caminho === grupo.origem;
+    const indices = solta ? [1] : imagens.map(a => laminaDe(a.nome));
+    const podeLaminas = atuais > 1 && imagens.length < atuais && indices.every(Boolean) && new Set(indices).size === indices.length;
+    const m = modo || (podeLaminas ? 'laminas' : 'tudo');
+    if (m === 'laminas') {
+      if (!podeLaminas) return { ...erro('para trocar só algumas lâminas, cada arquivo precisa do número da lâmina no nome'), podeLaminas };
+      const fora = indices.filter(n => n > atuais);
+      if (fora.length) return { ...erro(`o post tem ${atuais} lâminas; não existe a lâmina ${juntar(fora)}`), podeLaminas };
+      const ordem = [...indices].sort((a, b) => a - b), resto = atuais - indices.length;
+      return { ok: true, modo: 'laminas', podeLaminas, avisos: [],
+        texto: `troca ${ordem.length > 1 ? 'as lâminas' : 'a lâmina'} ${juntar(ordem)} (${resto > 1 ? `as outras ${resto} continuam` : 'a outra continua'})`,
+        envios: imagens, montar: r => { const s = [...post.slides]; indices.forEach((n, i) => { s[n - 1] = r[i]; }); return { slides: s }; } };
+    }
+    const avisos = atuais > 1 && imagens.length !== atuais ? [`o carrossel passa de ${atuais} para ${imagens.length} lâmina${imagens.length > 1 ? 's' : ''}`]
+      : atuais <= 1 && imagens.length > 1 ? [`vira carrossel de ${imagens.length} lâminas`] : [];
+    return { ok: true, modo: 'tudo', podeLaminas, avisos,
+      texto: atuais <= 1 && imagens.length === 1 ? 'troca a arte' : `substitui ${atuais > 1 ? `as ${atuais} lâminas` : 'a arte atual'} por ${imagens.length > 1 ? `${imagens.length} lâminas novas` : '1 arte nova'}`,
+      envios: imagens, montar: r => ({ slides: r, tipo: r.length > 1 ? 'carousel' : 'image' }) };
+  }
+
+  return { analisar, prepararAjustes, planejarAjuste, mesmoNumero, laminaDe };
 })();

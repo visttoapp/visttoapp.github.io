@@ -164,7 +164,9 @@ select:disabled,input:disabled{opacity:.6;cursor:not-allowed}
 .admin #titulo[title]:not([title=""]){cursor:pointer}
 .admin #titulo[title]:not([title=""]):hover{color:var(--brand-text)}
 .page-head .actions{margin:0}
-#filterStatus{width:auto;min-width:190px}
+#filterStatus{width:auto;min-width:170px;min-height:30px;padding-top:4px;padding-bottom:4px;font-size:13px}
+.page-head .btn.active{background:var(--brand-soft);border-color:var(--brand-border);color:var(--brand-text);box-shadow:none}
+.lista-ferramentas{display:flex;align-items:center;gap:8px;flex-wrap:wrap;justify-content:flex-end}
 
 .summary{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-bottom:16px}
 .summary>div{background:var(--surface);border:1px solid var(--border);border-radius:var(--r-lg);padding:16px 18px;box-shadow:var(--shadow-soft)}
@@ -322,8 +324,8 @@ details#loteBox p{color:var(--text-2);font-size:13px;margin-bottom:10px}
 .login-foot{text-align:center;color:var(--text-3);font-size:12px;margin-bottom:24px}
 
 /* visão Equipe: esconde o fluxo de posts */
-body.vendo-equipe #summary,body.vendo-equipe #cardLink,body.vendo-equipe #cardPost,body.vendo-equipe .lista-card,body.vendo-equipe .page-head .actions,body.vendo-equipe #cardCliente,body.vendo-equipe #cardMes,body.vendo-equipe #cardImport,body.vendo-equipe #cardExportar{display:none!important}
-body.vendo-espaco #cardExportar,body.vendo-espaco #summary,body.vendo-espaco #cardLink,body.vendo-espaco #cardPost,body.vendo-espaco .lista-card,body.vendo-espaco .page-head .actions,body.vendo-espaco #cardCliente,body.vendo-espaco #cardMes,body.vendo-espaco #cardImport,body.vendo-espaco #accessCard{display:none!important}
+body.vendo-equipe #summary,body.vendo-equipe #cardLink,body.vendo-equipe #cardPost,body.vendo-equipe .lista-card,body.vendo-equipe .page-head .actions,body.vendo-equipe #cardCliente,body.vendo-equipe #cardMes,body.vendo-equipe .ferramenta{display:none!important}
+body.vendo-espaco .ferramenta,body.vendo-espaco #summary,body.vendo-espaco #cardLink,body.vendo-espaco #cardPost,body.vendo-espaco .lista-card,body.vendo-espaco .page-head .actions,body.vendo-espaco #cardCliente,body.vendo-espaco #cardMes,body.vendo-espaco #cardImport,body.vendo-espaco #accessCard{display:none!important}
 
 /* troca obrigatória de senha */
 body.trocar-senha .main .wrap>:not(#cardSenha),body.trocar-senha .sidebar .side-section,body.trocar-senha #btnFecharSenha,body.trocar-senha #btnMinhaSenha{display:none!important}
@@ -458,6 +460,8 @@ body.trocar-senha .main .wrap>:not(#cardSenha),body.trocar-senha .sidebar .side-
   .page-head h2,.admin #titulo{font-size:22px;line-height:30px}
   .page-head .actions{width:100%}
   #filterStatus{flex:1}
+  .lista-card .card-head{flex-direction:column}
+  .lista-ferramentas{width:100%;justify-content:stretch}
   .feed{gap:4px}
   .tile{border-radius:var(--r)}
   .summary b{font-size:22px;line-height:28px}
@@ -550,3 +554,37 @@ body[data-tema="escuro"] .txtad b{color:#8ab4f8}
 .rel-hist p{margin:2pt 0 0;white-space:pre-line}
 .rel-vazio{color:#8a8a85;font-size:9pt;margin:8pt 0 0}
 .rel-rodape{margin-top:14pt;padding-top:6pt;border-top:1px solid #deddd8;font-size:8pt;color:#8a8a85}
+
+/* ---------- ferramentas do mês: subir ajustes ---------- */
+.ferramenta .drop{margin-bottom:4px}
+.drop.travado{opacity:.5;pointer-events:none}
+.aj{display:flex;align-items:flex-start;gap:12px;padding:14px 0;border-top:1px solid var(--border)}
+.aj:first-child{border-top:0;margin-top:8px}
+.aj.off .aj-troca,.aj.off .aj-plano{opacity:.5}
+.aj>.check{min-height:34px;padding:8px 9px;flex:none}
+.aj-troca{display:flex;align-items:center;gap:6px;flex:none;color:var(--text-3)}
+.aj-mini{position:relative;display:flex;align-items:center;justify-content:center;width:52px;height:65px;border-radius:var(--r-sm);overflow:hidden;background:var(--surface-3);border:1px solid var(--border)}
+.aj-mini img{width:100%;height:100%;object-fit:cover}
+.aj-mini.nova{border-color:var(--brand-border);box-shadow:0 0 0 2px var(--brand-soft)}
+.aj-mini small{font-size:11px;color:var(--text-2)}
+.aj-mini b{position:absolute;right:3px;bottom:3px;min-width:18px;padding:0 4px;border-radius:99px;background:var(--overlay);color:#fff;font-size:11px;line-height:16px;text-align:center}
+.aj-info{display:flex;flex-direction:column;gap:6px;flex:1;min-width:0}
+.aj-linha{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.aj-linha select{width:auto;flex:0 1 280px;min-width:0;min-height:32px;padding:4px 30px 4px 10px;font-size:13px}
+.aj-origem{font-size:12px;color:var(--text-3);max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.aj-origem::after{content:" →"}
+.aj-plano{margin:0;font-size:13px;line-height:18px;color:var(--text)}
+.aj-info small.alerta{font-size:12px;color:var(--warning)}
+.seg{display:inline-flex;align-self:flex-start;padding:2px;border:1px solid var(--border);border-radius:var(--r);background:var(--surface-2)}
+.seg button{min-height:26px;padding:0 10px;border:0;border-radius:calc(var(--r) - 2px);background:none;color:var(--text-2);font:inherit;font-size:12px;font-weight:500;cursor:pointer}
+.seg button.on{background:var(--surface);color:var(--text);box-shadow:var(--shadow-xs)}
+#ajustesAcoes{margin-top:8px;padding-top:16px;border-top:1px solid var(--border)}
+.aviso-cliente{align-items:flex-start;max-width:640px}
+.aviso-cliente input{margin-top:2px}
+.aviso-cliente span{display:flex;flex-direction:column;gap:2px}
+.aviso-cliente small{font-size:12px;font-weight:400;line-height:17px;color:var(--text-2)}
+@media (max-width:640px){
+  .aj{flex-wrap:wrap}
+  .aj-info{flex-basis:100%}
+  .aj-linha select{flex:1 1 100%}
+}
