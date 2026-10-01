@@ -1,18 +1,21 @@
 /* Vistto · lê uma pasta do mês e monta os posts.
    Espera caminhos relativos, como "carrosseis/01 tema/1.jpg" ou "esteticos/03 tema.jpg".
    Pasta com vários arquivos = um carrossel. Arquivo solto = um post. .mp4 = reel.
-   Tira do nome só o número e a ordem. Data, legenda e título ficam vazios, para preencher na mão.
-   Não faz upload nem toca no banco: só interpreta os nomes. */
+   Do nome saem só o número e a ordem. Data, título e legenda vêm do roteiro.txt, se a pasta tiver um;
+   sem ele, ficam vazios para preencher na mão.
+   Não faz upload nem toca no banco: só interpreta os nomes e o texto. */
 window.PASTA = (() => {
   const CATEGORIA = /^(carross?[ei]is?|carrossel|carroseis|est[ae]ticos?|est[áa]ticos?|estetico|[uú]nicos?|singles?|posts?|feed|artes?|finais?|final|entregas?|aprova[cç][ãa]o|aprovacao|reels?|v[íi]deos?|videos?|stories|story)$/;
   const IGNORAR = /^(brutos?|raw|psd|psds?|ai|editaveis?|edit[áa]veis?|fontes?|refer[êe]ncias?|refs?|backup|antigos?|old|logos?|briefing|__macosx)$/;
   const IMAGEM = /\.(jpe?g|png|webp|gif)$/i;
   const VIDEO = /\.mp4$/i;
   const CAPA = /(capa|thumb|cover)/;
+  const ROTEIRO = /^(roteiro|legendas?|linha[ _-]?editorial|textos?)\.(txt|md)$/;
 
   const semAcento = s => String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '');
   const chave = s => semAcento(s).toLowerCase().trim();
-  const base = nome => nome.replace(/\.[^.]+$/, '');
+  // sem a extensão e sem o "@2x" que o Figma acrescenta na exportação
+  const base = nome => nome.replace(/\.[^.]+$/, '').replace(/@\d+(\.\d+)?x$/i, '');
   const natural = (a, b) => String(a).localeCompare(String(b), 'pt-BR', { numeric: true, sensitivity: 'base' });
 
   function numeroDe(nome) {
@@ -31,6 +34,7 @@ window.PASTA = (() => {
       const partes = String(a.caminho || a.nome).split('/').filter(Boolean);
       const nome = partes.pop();
       if (nome.startsWith('.')) { ignorados.push({ caminho: a.caminho, motivo: 'arquivo oculto' }); continue; }
+      if (ROTEIRO.test(chave(nome))) continue; // o roteiro é lido à parte, por lerRoteiro
       const barrada = partes.find(p => IGNORAR.test(chave(p)) || p.startsWith('.'));
       if (barrada) { ignorados.push({ caminho: a.caminho, motivo: `pasta "${barrada}"` }); continue; }
       const video = VIDEO.test(nome), imagem = IMAGEM.test(nome);
@@ -103,9 +107,68 @@ window.PASTA = (() => {
       if (imagens.length > 20) avisos.push('mais de 20 lâminas');
     }
     return {
-      numero: n.numero, data: null, tema: tituloDe(n.resto), tipo,
+      numero: n.numero, data: null, tema: tituloDe(n.resto), titulo: '', legenda: '', tipo,
       arquivos, origem: origem || nomeBruto, avisos
     };
+  }
+
+  /* ---------- roteiro.txt: data, tema, título e legenda de cada post, pelo número ----------
+     # 01
+     data: 06/10
+     tema: Lançamento
+     titulo: Chegou a <em>coleção</em>
+     legenda:
+     Texto da legenda, quantas linhas precisar, até o próximo "# 02". */
+  const CAMPOS = { data: 'data', dia: 'data', tema: 'tema', titulo: 'titulo', legenda: 'legenda' };
+  const LIMITE_LEGENDA = 2200; // o Instagram corta acima disso
+  const LIMITE_DATA = 16;      // posts_data_curta, no banco
+
+  // Entre os arquivos da pasta, o roteiro (o mais perto da raiz, se houver mais de um).
+  function acharRoteiro(arquivos) {
+    return arquivos
+      .map(a => ({ a, partes: String(a.caminho || a.nome).split('/').filter(Boolean) }))
+      .filter(x => ROTEIRO.test(chave(x.partes[x.partes.length - 1])) && !x.partes.slice(0, -1).some(p => IGNORAR.test(chave(p))))
+      .sort((x, y) => x.partes.length - y.partes.length)
+      .map(x => x.a)[0] || null;
+  }
+
+  function lerRoteiro(texto) {
+    const blocos = new Map();
+    let atual = null, campo = null;
+    for (const linha of String(texto || '').replace(/^\uFEFF/, '').split(/\r?\n/)) {
+      const cab = linha.match(/^\s*#+\s*(?:post\s*)?(\d{1,3})(?!\d)/i);
+      if (cab) {
+        const numero = String(+cab[1]).padStart(2, '0');
+        atual = { numero, data: '', tema: '', titulo: '', legenda: [] };
+        blocos.set(numero, atual); campo = null; continue;
+      }
+      if (!atual) continue;
+      const kv = campo !== 'legenda' && linha.match(/^\s*([A-Za-zÀ-ÿ]+)\s*:\s*(.*)$/);
+      const k = kv && CAMPOS[chave(kv[1])];
+      if (k === 'legenda') { campo = 'legenda'; if (kv[2].trim()) atual.legenda.push(kv[2]); continue; }
+      if (k) { atual[k] = kv[2].trim(); continue; }
+      if (campo === 'legenda' || linha.trim()) { campo = 'legenda'; atual.legenda.push(linha); }
+    }
+    for (const b of blocos.values()) b.legenda = b.legenda.join('\n').trim();
+    return blocos;
+  }
+
+  // Preenche os posts com o roteiro. Devolve os números do roteiro que não têm arte.
+  function aplicarRoteiro(posts, blocos) {
+    const usados = new Set();
+    for (const p of posts) {
+      const b = [...blocos.values()].find(x => mesmoNumero(x.numero, p.numero));
+      if (!b) { p.avisos.push('sem texto no roteiro'); continue; }
+      usados.add(b.numero);
+      if (b.tema) p.tema = b.tema;
+      if (b.titulo) p.titulo = b.titulo;
+      p.legenda = b.legenda;
+      if (b.data.length > LIMITE_DATA) p.avisos.push(`data longa demais (até ${LIMITE_DATA} caracteres)`);
+      else if (b.data) p.data = b.data;
+      if (!b.legenda) p.avisos.push('roteiro sem legenda');
+      if (b.legenda.length > LIMITE_LEGENDA) p.avisos.push(`legenda com ${b.legenda.length} caracteres (o Instagram corta em ${LIMITE_LEGENDA})`);
+    }
+    return [...blocos.keys()].filter(n => !usados.has(n));
   }
 
   /* ---------- subir ajustes: casar a pasta de artes corrigidas com os posts que já existem ---------- */
@@ -165,5 +228,5 @@ window.PASTA = (() => {
       envios: imagens, montar: r => ({ slides: r, tipo: r.length > 1 ? 'carousel' : 'image' }) };
   }
 
-  return { analisar, prepararAjustes, planejarAjuste, mesmoNumero, laminaDe };
+  return { analisar, acharRoteiro, lerRoteiro, aplicarRoteiro, prepararAjustes, planejarAjuste, mesmoNumero, laminaDe };
 })();

@@ -61,7 +61,22 @@ Tudo o mais é reaproveitado: importar pasta, baixar originais, limpeza, arquiva
 ## Importar a pasta do mês
 Com o mês aberto, **Importar pasta** (no topo) lê uma pasta do computador e monta os posts. A regra: pasta com várias artes vira carrossel na ordem dos nomes, arte solta vira post de imagem, `.mp4` vira reel e puxa a capa de mesmo nome ou número. Pastas de categoria (`carrosseis`, `esteticos`, `feed`, `reels`, `stories`, `artes`…) são só organização e não viram post. Pastas de trabalho (`brutos`, `psd`, `editaveis`, `fontes`, `refs`, `backup`) e formatos fora de JPG, PNG, WebP, GIF e MP4 ficam de fora.
 
-Do nome saem só o número (`01`, `1.`, `01 -`) e a ordem; o resto do nome entra como tema, para ajustar. Data, legenda e título ficam vazios de propósito, porque nem todo arquivo traz essa informação. Antes de subir nada, o painel mostra uma revisão com número, tema, dia e formato editáveis, marca quem já tem número igual no mês (desmarcado) e avisa quando o reel está sem capa ou o número foi deduzido. O leitor de nomes fica em `js/importar.js` e é coberto por `tests/importar.mjs`.
+Do nome saem só o número (`01`, `1.`, `01 -`) e a ordem; o resto do nome entra como tema, para ajustar. O `@2x` que o Figma acrescenta é ignorado.
+
+Os textos vêm de um `roteiro.txt` na pasta (também vale `legendas.txt` ou `linha-editorial.txt`, ou `.md`). Cada post é um bloco que começa com `# 01`, casado pelo número da arte; dentro dele, `data:`, `tema:`, `titulo:` e, por último, `legenda:`, que segue em quantas linhas precisar até o próximo `#`. Campo que faltar fica vazio. Sem roteiro, data, título e legenda ficam para preencher na mão.
+
+```
+# 01
+data: 06/10
+tema: Lançamento da coleção
+titulo: Chegou a <em>coleção</em>
+legenda:
+Primeira linha da legenda.
+
+Hashtags e emojis podem ir aqui.
+```
+
+A revisão avisa post sem bloco no roteiro, bloco sem arte na pasta, legenda acima de 2.200 caracteres e data com mais de 16. Antes de subir nada, o painel mostra uma revisão com número, tema, dia e formato editáveis, marca quem já tem número igual no mês (desmarcado) e avisa quando o reel está sem capa ou o número foi deduzido. O leitor de nomes fica em `js/importar.js` e é coberto por `tests/importar.mjs`.
 
 ## Baixar os originais
 Na lista de posts, **baixar** entrega os arquivos exatamente como foram enviados, sem compressão: imagem única sai como arquivo, carrossel sai em .zip com as lâminas numeradas na ordem, reel sai com vídeo e capa. Quem enxerga o post pode baixar. O .zip é montado no navegador com o JSZip (`js/vendor`, licença MIT).
