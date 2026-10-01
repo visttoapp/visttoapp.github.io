@@ -97,6 +97,61 @@ r = PASTA.analisar(arq(['carrosseis/01 tema/leia.txt']));
 assert.equal(r.posts.length, 0); ok();
 assert.equal(r.ignorados.length, 1); ok();
 
+// ---------- roteiro.txt ----------
+const texto = `Linha editorial de outubro
+
+# 01
+data: 06/10
+tema: Lançamento da coleção
+título: Chegou a <em>coleção</em>
+legenda:
+Primeira linha da legenda.
+
+Segunda linha, com data: no meio e #hashtag
+
+## Post 2
+dia: 08/10
+legenda: Legenda curta na mesma linha
+
+# 03
+Só o texto, sem campos.
+
+# 09
+tema: Sem arte
+legenda: sobra
+`;
+let blocos = PASTA.lerRoteiro(texto);
+assert.deepEqual([...blocos.keys()], ['01', '02', '03', '09']); ok();
+assert.equal(blocos.get('01').titulo, 'Chegou a <em>coleção</em>'); ok();
+assert.equal(blocos.get('01').legenda, 'Primeira linha da legenda.\n\nSegunda linha, com data: no meio e #hashtag'); ok();
+assert.equal(blocos.get('02').data, '08/10'); ok();
+assert.equal(blocos.get('02').legenda, 'Legenda curta na mesma linha'); ok();
+assert.equal(blocos.get('03').legenda, 'Só o texto, sem campos.'); ok();
+
+// o roteiro não vira post nem "formato não aceito", e casa pelo número
+const pasta = arq(['Cliente/10/roteiro.txt', 'Cliente/10/carrosseis/01 lancamento/1@2x.png', 'Cliente/10/carrosseis/01 lancamento/2@2x.png',
+  'Cliente/10/esteticos/2 aviso@2x.png', 'Cliente/10/esteticos/03 frase.png', 'Cliente/10/esteticos/04 extra.png']);
+r = PASTA.analisar(pasta);
+assert.equal(r.ignorados.length, 0); ok();
+assert.equal(PASTA.acharRoteiro(pasta).caminho, 'Cliente/10/roteiro.txt'); ok();
+assert.equal(r.posts[1].tema, 'Aviso'); ok(); // sem o @2x
+let sobra = PASTA.aplicarRoteiro(r.posts, blocos);
+assert.deepEqual(sobra, ['09']); ok();
+assert.equal(r.posts.map(p => `${p.numero}|${p.data}|${p.tema}`).join(' / '), '01|06/10|Lançamento da coleção / 02|08/10|Aviso / 03|null|Frase / 04|null|Extra'); ok();
+assert.deepEqual(r.posts[3].avisos, ['sem texto no roteiro']); ok();
+// legenda longa, data longa e bloco sem legenda avisam
+blocos = PASTA.lerRoteiro(`# 01\ndata: segunda-feira, 06 de outubro\nlegenda:\n${'a'.repeat(2300)}\n# 02\ntema: so tema`);
+r = PASTA.analisar(arq(['01.png', '02.png']));
+PASTA.aplicarRoteiro(r.posts, blocos);
+assert.equal(r.posts[0].data, null); ok();
+assert.ok(r.posts[0].avisos.some(a => a.startsWith('data longa'))); ok();
+assert.ok(r.posts[0].avisos.some(a => a.startsWith('legenda com 2300'))); ok();
+assert.deepEqual(r.posts[1].avisos, ['roteiro sem legenda']); ok();
+// nomes aceitos para o roteiro; dentro de pasta de trabalho não conta
+assert.ok(PASTA.acharRoteiro(arq(['x/Legendas.txt']))); ok();
+assert.ok(PASTA.acharRoteiro(arq(['x/linha-editorial.md']))); ok();
+assert.equal(PASTA.acharRoteiro(arq(['x/briefing/roteiro.txt'])), null); ok();
+
 // ---------- subir ajustes ----------
 const post = (numero, tipo, n) => ({ numero, tipo, slides: tipo === 'reel' || tipo === 'texto' ? [] : Array.from({ length: n }, (_, i) => `r2:a/${numero}-${i + 1}.jpg`), capa_url: tipo === 'reel' ? 'r2:a/capa.jpg' : null });
 const numeros = ['01', '02', '03', '05', '7'];

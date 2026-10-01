@@ -690,13 +690,23 @@
     inp.onchange = () => { lerPasta([...inp.files]); };
     inp.click();
   };
-  function lerPasta(fl) {
+  async function lerPasta(fl) {
     if (!fl.length) return;
-    const { posts: achados, ignorados } = PASTA.analisar(fl.map(f => ({ caminho: f.webkitRelativePath || f.name, nome: f.name, arquivo: f })));
+    const lista = fl.map(f => ({ caminho: f.webkitRelativePath || f.name, nome: f.name, arquivo: f }));
+    const { posts: achados, ignorados } = PASTA.analisar(lista);
+    // roteiro.txt na pasta: data, tema, título e legenda de cada post, casados pelo número
+    const roteiro = PASTA.acharRoteiro(lista);
+    let semArte = [], roteiroOk = false;
+    if (roteiro) {
+      try { semArte = PASTA.aplicarRoteiro(achados, PASTA.lerRoteiro(await roteiro.arquivo.text())); roteiroOk = true; }
+      catch (e) { roteiroOk = false; }
+    }
     importPosts = achados.map(p => ({ ...p, usar: true, repetido: posts.some(x => (x.numero || '') === p.numero) }));
     importPosts.forEach(p => { if (p.repetido) p.usar = false; });
     const partes = [];
     partes.push(`${achados.length} post(s) encontrado(s) em ${fl.length} arquivo(s).`);
+    if (roteiro) partes.push(roteiroOk ? `Textos lidos de "${roteiro.nome}".` : `Não consegui ler "${roteiro.nome}": os textos ficam para preencher.`);
+    if (semArte.length) partes.push(`O roteiro tem ${semArte.length > 1 ? 'os posts' : 'o post'} ${semArte.join(', ')} sem arte na pasta.`);
     if (ignorados.length) partes.push(`${ignorados.length} arquivo(s) fora do padrão foram deixados de lado (${[...new Set(ignorados.map(i => i.motivo))].slice(0, 3).join(', ')}).`);
     if (importPosts.some(p => p.repetido)) partes.push('Os números que já existem neste mês vieram desmarcados.');
     $('msgImport').textContent = partes.join(' ');
@@ -717,6 +727,7 @@
       </div>
       <div class="imp-info">
         <small>${p.arquivos.length} arquivo(s) · ${esc(p.origem)}</small>
+        ${p.legenda ? `<small title="${esc(p.legenda)}">legenda: ${esc(p.legenda.slice(0, 70))}${p.legenda.length > 70 ? '…' : ''}</small>` : ''}
         ${p.repetido ? '<small class="alerta">número já existe neste mês</small>' : ''}
         ${p.avisos.map(a => `<small class="alerta">${esc(a)}</small>`).join('')}
       </div>
@@ -749,14 +760,14 @@
         const tipo = vid ? 'reel' : p.tipo === 'reel' ? 'image' : p.tipo;
         const { error } = await sb.from('posts').insert({
           mes_id: mes.id, ordem: posts.length + criados, numero: String(p.numero || '').trim() || null,
-          data: (p.data || '').trim() || null, tema: canal === 'instagram' ? (p.tema || '').trim() : null, titulo: (p.tema || '').trim(),
-          tipo, legenda: '', slides: tipo === 'reel' ? [] : imgs,
+          data: (p.data || '').trim() || null, tema: canal === 'instagram' ? (p.tema || '').trim() : null, titulo: (p.titulo || p.tema || '').trim(),
+          tipo, legenda: (p.legenda || '').trim(), slides: tipo === 'reel' ? [] : imgs,
           video_url: vid ? vid.url : null, capa_url: tipo === 'reel' ? (imgs[0] || null) : null
         });
         if (error) throw new Error(error.message);
         criados++;
       }
-      $('msgImport').textContent = `${criados} post(s) criado(s) na ordem da pasta. Agora preencha tema, dia e legenda de cada um, em "editar", antes de publicar o mês.`;
+      $('msgImport').textContent = `${criados} post(s) criado(s) na ordem da pasta. ${fila.every(p => p.legenda) ? 'Confira os textos em "editar" antes de publicar o mês.' : 'Preencha o que faltou (dia e legenda) em "editar" antes de publicar o mês.'}`;
       $('msgImport').className = 'msg ok';
       importPosts = []; renderImport(); fecharFerramentas();
       await selectMes(mes.id);
