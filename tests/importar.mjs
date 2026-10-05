@@ -156,6 +156,23 @@ assert.ok(PASTA.acharRoteiro(arq(['x/Legendas.txt']))); ok();
 assert.ok(PASTA.acharRoteiro(arq(['x/linha-editorial.md']))); ok();
 assert.equal(PASTA.acharRoteiro(arq(['x/briefing/roteiro.txt'])), null); ok();
 
+// ---------- pasta escolhida no navegador: o nome dela vem no começo de cada caminho ----------
+const mes = arq(['setembro/roteiro.txt', 'setembro/01 mais de 32 anos.png', 'setembro/02 nova regra.png',
+  'setembro/09 carrossel 1/1.png', 'setembro/09 carrossel 1/2.png', 'setembro/13 um dia na matriz.mp4', 'setembro/13 um dia na matriz.png']);
+r = PASTA.analisar(PASTA.semRaiz(mes));
+assert.equal(r.posts.map(p => `${p.numero}|${p.tipo}|${p.arquivos.length}`).join(' '), '01|image|1 02|image|1 09|carousel|2 13|reel|2'); ok();
+assert.ok(PASTA.acharRoteiro(PASTA.semRaiz(mes))); ok();
+// só artes soltas na pasta escolhida: cada uma é um post, não um carrossel com o nome do mês
+r = PASTA.analisar(PASTA.semRaiz(arq(['setembro/01 a.png', 'setembro/02 b.png'])));
+assert.equal(r.posts.map(p => p.tipo).join(), 'image,image'); ok();
+// a pasta escolhida é o próprio carrossel: continua um post
+r = PASTA.analisar(PASTA.semRaiz(arq(['03 tema/1.png', '03 tema/2.png'])));
+assert.equal(r.posts.length, 1); ok();
+assert.equal(r.posts[0].tipo, 'carousel'); ok();
+// escolhendo a pasta do cliente, o mês dentro dela também não vira post
+r = PASTA.analisar(PASTA.semRaiz(arq(['Prime/setembro/01 a.png', 'Prime/setembro/09 c/1.png', 'Prime/setembro/09 c/2.png'])));
+assert.equal(r.posts.map(p => `${p.numero}|${p.tipo}`).join(' '), '01|image 09|carousel'); ok();
+
 // ---------- subir ajustes ----------
 const post = (numero, tipo, n) => ({ numero, tipo, slides: tipo === 'reel' || tipo === 'texto' ? [] : Array.from({ length: n }, (_, i) => `r2:a/${numero}-${i + 1}.jpg`), capa_url: tipo === 'reel' ? 'r2:a/capa.jpg' : null });
 const numeros = ['01', '02', '03', '05', '7'];

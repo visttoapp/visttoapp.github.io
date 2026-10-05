@@ -692,7 +692,7 @@
   };
   async function lerPasta(fl) {
     if (!fl.length) return;
-    const lista = fl.map(f => ({ caminho: f.webkitRelativePath || f.name, nome: f.name, arquivo: f }));
+    const lista = PASTA.semRaiz(fl.map(f => ({ caminho: f.webkitRelativePath || f.name, nome: f.name, arquivo: f })));
     const { posts: achados, ignorados } = PASTA.analisar(lista);
     // roteiro.txt na pasta: data, tema, título e legenda de cada post, casados pelo número
     const roteiro = PASTA.acharRoteiro(lista);

@@ -42,12 +42,15 @@ window.PASTA = (() => {
       uteis.push({ arquivo: a.arquivo, caminho: a.caminho, nome, pastas: partes, video, imagem });
     }
 
-    // Uma pasta que não é categoria (carrosseis, esteticos…) vira um post.
+    // Uma pasta que não é categoria (carrosseis, esteticos…) vira um post. Pasta que tem outra
+    // pasta com artes dentro é organização (o mês, o cliente), não post.
+    const comFilhos = new Set();
+    for (const f of uteis) for (let i = 1; i < f.pastas.length; i++) comFilhos.add(f.pastas.slice(0, i).join('/'));
     const grupos = new Map();
     const soltos = [];
     for (const f of uteis) {
       const pai = f.pastas[f.pastas.length - 1] || '';
-      if (pai && !CATEGORIA.test(chave(pai))) {
+      if (pai && !CATEGORIA.test(chave(pai)) && !comFilhos.has(f.pastas.join('/'))) {
         const id = f.pastas.join('/');
         if (!grupos.has(id)) grupos.set(id, { nome: pai, caminho: id, itens: [] });
         grupos.get(id).itens.push(f);
@@ -110,6 +113,16 @@ window.PASTA = (() => {
       numero: n.numero, data: null, tema: tituloDe(n.resto), titulo: '', legenda: '', tipo,
       arquivos, origem: origem || nomeBruto, avisos
     };
+  }
+
+  // O navegador põe a pasta escolhida no começo de cada caminho ("setembro/01 tema.png").
+  // Ela é o mês, não um post: sai do caminho. Fica só quando é a pasta de um post ("03 tema/1.png").
+  function semRaiz(arquivos) {
+    const partes = arquivos.map(a => String(a.caminho || a.nome).split('/').filter(Boolean));
+    const raiz = partes[0] && partes[0].length > 1 ? partes[0][0] : '';
+    if (!raiz || !partes.every(p => p.length > 1 && p[0] === raiz)) return arquivos;
+    if (numeroDe(raiz).numero && partes.every(p => p.length === 2)) return arquivos;
+    return arquivos.map((a, i) => ({ ...a, caminho: partes[i].slice(1).join('/') }));
   }
 
   /* ---------- roteiro.txt: data, tema, título e legenda de cada post, pelo número ----------
@@ -229,5 +242,5 @@ window.PASTA = (() => {
       envios: imagens, montar: r => ({ slides: r, tipo: r.length > 1 ? 'carousel' : 'image' }) };
   }
 
-  return { analisar, acharRoteiro, lerRoteiro, aplicarRoteiro, prepararAjustes, planejarAjuste, mesmoNumero, laminaDe };
+  return { analisar, semRaiz, acharRoteiro, lerRoteiro, aplicarRoteiro, prepararAjustes, planejarAjuste, mesmoNumero, laminaDe };
 })();
