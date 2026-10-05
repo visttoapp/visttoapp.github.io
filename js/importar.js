@@ -136,7 +136,8 @@ window.PASTA = (() => {
     const blocos = new Map();
     let atual = null, campo = null;
     for (const linha of String(texto || '').replace(/^\uFEFF/, '').split(/\r?\n/)) {
-      const cab = linha.match(/^\s*#+\s*(?:post\s*)?(\d{1,3})(?!\d)/i);
+      // "# 01" abre um post; "#32anos" no começo da linha é hashtag e fica na legenda
+      const cab = linha.match(/^\s*#+\s*(?:post\s*)?(\d{1,3})(?![\d\p{L}_])/iu);
       if (cab) {
         const numero = String(+cab[1]).padStart(2, '0');
         atual = { numero, data: '', tema: '', titulo: '', legenda: [] };

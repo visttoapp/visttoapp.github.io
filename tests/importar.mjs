@@ -147,6 +147,10 @@ assert.equal(r.posts[0].data, null); ok();
 assert.ok(r.posts[0].avisos.some(a => a.startsWith('data longa'))); ok();
 assert.ok(r.posts[0].avisos.some(a => a.startsWith('legenda com 2300'))); ok();
 assert.deepEqual(r.posts[1].avisos, ['roteiro sem legenda']); ok();
+// hashtag que começa com número, no começo da linha, continua na legenda
+blocos = PASTA.lerRoteiro('# 12\nlegenda:\nTexto.\n#32anos #primeplus\n#2026');
+assert.deepEqual([...blocos.keys()], ['12']); ok();
+assert.equal(blocos.get('12').legenda, 'Texto.\n#32anos #primeplus\n#2026'); ok();
 // nomes aceitos para o roteiro; dentro de pasta de trabalho não conta
 assert.ok(PASTA.acharRoteiro(arq(['x/Legendas.txt']))); ok();
 assert.ok(PASTA.acharRoteiro(arq(['x/linha-editorial.md']))); ok();
