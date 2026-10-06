@@ -185,6 +185,23 @@ window.PASTA = (() => {
     return [...blocos.keys()].filter(n => !usados.has(n));
   }
 
+  const blocoDe = (blocos, numero) => blocos ? [...blocos.values()].find(b => mesmoNumero(b.numero, numero)) || null : null;
+
+  // O que um bloco do roteiro muda num post que já existe: só os campos preenchidos e diferentes
+  // do atual. Campo vazio no roteiro não apaga nada. Anúncio não tem tema.
+  function textoAjuste(bloco, post, ads) {
+    const campos = {}, nomes = [], avisos = [];
+    if (!bloco || !post) return { campos, nomes, avisos };
+    const troca = (k, nome, v) => { if (v && v !== (post[k] || '')) { campos[k] = v; nomes.push(nome); } };
+    if (!ads) troca('tema', 'tema', bloco.tema);
+    troca('titulo', 'título', bloco.titulo);
+    troca('legenda', 'legenda', bloco.legenda);
+    if (bloco.data.length > LIMITE_DATA) avisos.push(`data do roteiro longa demais (até ${LIMITE_DATA} caracteres)`);
+    else troca('data', 'data', bloco.data);
+    if (bloco.legenda.length > LIMITE_LEGENDA) avisos.push(`legenda com ${bloco.legenda.length} caracteres (o Instagram corta em ${LIMITE_LEGENDA})`);
+    return { campos, nomes, avisos };
+  }
+
   /* ---------- subir ajustes: casar a pasta de artes corrigidas com os posts que já existem ---------- */
   const mesmoNumero = (a, b) => {
     const k = v => { const t = String(v == null ? '' : v).trim(); return /^\d+$/.test(t) ? String(+t) : chave(t); };
@@ -209,9 +226,11 @@ window.PASTA = (() => {
   // O que acontece com o post se estas artes entrarem. modo: 'laminas' troca só as lâminas com
   // aquele número; 'tudo' substitui o conjunto inteiro. Sem modo, escolhe o mais seguro.
   // montar(refs) recebe as referências já enviadas, na ordem de envios, e devolve o que gravar.
+  // Sem grupo: só o roteiro trouxe texto novo para o post, nenhuma arte muda.
   function planejarAjuste(grupo, post, modo) {
     const erro = t => ({ ok: false, erro: t, avisos: [] });
-    if (!post) return erro('escolha o post que recebe estas artes');
+    if (!post) return erro(grupo ? 'escolha o post que recebe estas artes' : 'escolha o post que recebe este texto');
+    if (!grupo) return { ok: true, modo: 'texto', avisos: [], texto: 'a arte continua', envios: [], montar: () => ({}) };
     const video = grupo.arquivos.find(a => a.video), imagens = grupo.arquivos.filter(a => a.imagem);
     if (post.tipo === 'texto') return erro('anúncio só de texto não tem arte');
     if (video && post.tipo !== 'reel') return erro('tem vídeo, mas o post não é reel');
@@ -242,5 +261,5 @@ window.PASTA = (() => {
       envios: imagens, montar: r => ({ slides: r, tipo: r.length > 1 ? 'carousel' : 'image' }) };
   }
 
-  return { analisar, semRaiz, acharRoteiro, lerRoteiro, aplicarRoteiro, prepararAjustes, planejarAjuste, mesmoNumero, laminaDe };
+  return { analisar, semRaiz, acharRoteiro, lerRoteiro, aplicarRoteiro, blocoDe, textoAjuste, prepararAjustes, planejarAjuste, mesmoNumero, laminaDe };
 })();

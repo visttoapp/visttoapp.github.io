@@ -76,7 +76,9 @@ Primeira linha da legenda.
 Hashtags e emojis podem ir aqui.
 ```
 
-A revisão avisa post sem bloco no roteiro, bloco sem arte na pasta, legenda acima de 2.200 caracteres e data com mais de 16. Antes de subir nada, o painel mostra uma revisão com número, tema, dia e formato editáveis, marca quem já tem número igual no mês (desmarcado) e avisa quando o reel está sem capa ou o número foi deduzido. O leitor de nomes fica em `js/importar.js` e é coberto por `tests/importar.mjs`.
+A revisão avisa post sem bloco no roteiro, bloco sem arte na pasta, legenda acima de 2.200 caracteres e data com mais de 16.
+
+O **Subir ajustes** também lê o roteiro. Com um `roteiro.txt` na pasta das artes corrigidas, cada bloco troca tema, título, legenda e data do post de mesmo número, junto com a arte. Só entra o que está preenchido e é diferente do atual: campo vazio no roteiro não apaga nada. Um bloco sem arte na pasta troca só o texto, e a arte continua. A revisão mostra o que muda em cada post antes de confirmar. Antes de subir nada, o painel mostra uma revisão com número, tema, dia e formato editáveis, marca quem já tem número igual no mês (desmarcado) e avisa quando o reel está sem capa ou o número foi deduzido. O leitor de nomes fica em `js/importar.js` e é coberto por `tests/importar.mjs`.
 
 ## Baixar os originais
 Na lista de posts, **baixar** entrega os arquivos exatamente como foram enviados, sem compressão: imagem única sai como arquivo, carrossel sai em .zip com as lâminas numeradas na ordem, reel sai com vídeo e capa. Quem enxerga o post pode baixar. O .zip é montado no navegador com o JSZip (`js/vendor`, licença MIT).
