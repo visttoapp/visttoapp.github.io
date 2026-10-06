@@ -13,8 +13,8 @@ alter table storage.objects enable row level security;grant select,insert,update
 create function public.gen_random_bytes(n integer) returns bytea language sql as $$select decode(repeat(replace(gen_random_uuid()::text,'-',''),4),'hex')::bytea $$;
 create function extensions.gen_random_bytes(n integer) returns bytea language sql as $$select public.gen_random_bytes(n) $$;`);
 await db.exec(fs.readFileSync(new URL('./fixtures/schema-v1.sql',import.meta.url),'utf8').replace('create extension if not exists pgcrypto;',''));
-await db.exec(fs.readFileSync(new URL('../supabase/multi-agencias.sql',import.meta.url),'utf8'));
-await db.exec(fs.readFileSync(new URL('../supabase/hierarquia.sql',import.meta.url),'utf8'));
+await db.exec(fs.readFileSync(new URL('../supabase/historico/multi-agencias.sql',import.meta.url),'utf8'));
+await db.exec(fs.readFileSync(new URL('../supabase/historico/hierarquia.sql',import.meta.url),'utf8'));
 const A={a:'10000000-0000-4000-8000-000000000001',b:'10000000-0000-4000-8000-000000000002'};
 const people={admin:null,donoB:['b','dono'],socioA:['a','socio'],headB:['b','head'],designerB:['b','designer'],trafegoB:['b','gestor_trafego'],designerA:['a','designer'],livre:null,livre2:null};
 const id={};let i=1;
