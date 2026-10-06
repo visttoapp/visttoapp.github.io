@@ -781,17 +781,18 @@
   };
 
   /* ---------- subir ajustes pela pasta ---------- */
-  // Troca as artes de posts que já existem, casando pelo número. Tema, legenda e histórico ficam;
-  // as artes antigas viram "sem dono" e saem na limpeza.
-  let ajustes = [], previas = [];
+  // Troca as artes de posts que já existem, casando pelo número. Com um roteiro.txt na pasta, troca
+  // também tema, título, legenda e data; sem ele, o texto fica. O histórico fica sempre, e as artes
+  // antigas viram "sem dono" e saem na limpeza.
+  let ajustes = [], previas = [], roteiroAj = null;
   const rotuloPost = p => `${canal === 'instagram' ? 'Post' : 'Anúncio'} ${p.numero || '—'}${(p.tema || semTags(p.titulo)) ? ' · ' + (p.tema || semTags(p.titulo)) : ''}`;
   function limparPrevias() { previas.forEach(u => URL.revokeObjectURL(u)); previas = []; }
   function previa(arquivo) { const u = URL.createObjectURL(arquivo); previas.push(u); return u; }
   $('btnAjustes').onclick = alternar('cardAjustes', () => {
-    limparPrevias(); ajustes = []; renderAjustes();
+    limparPrevias(); ajustes = []; roteiroAj = null; renderAjustes();
     $('msgAjustes').textContent = ''; $('msgAjustes').className = 'msg';
   });
-  $('btnFecharAjustes').onclick = () => { fecharFerramentas(); limparPrevias(); ajustes = []; renderAjustes(); };
+  $('btnFecharAjustes').onclick = () => { fecharFerramentas(); limparPrevias(); ajustes = []; roteiroAj = null; renderAjustes(); };
   $('dropAjustes').onclick = () => {
     if ($('dropAjustes').classList.contains('travado')) return;
     const inp = document.createElement('input');
@@ -799,11 +800,15 @@
     inp.onchange = () => lerAjustes([...inp.files]);
     inp.click();
   };
-  function lerAjustes(fl) {
+  async function lerAjustes(fl) {
     if (!fl.length) return;
     limparPrevias();
     const lista = PASTA.prepararAjustes(fl.map(f => ({ caminho: f.webkitRelativePath || f.name, nome: f.name, arquivo: f })), posts.map(p => p.numero));
     const { posts: grupos, ignorados } = PASTA.analisar(lista);
+    const roteiro = PASTA.acharRoteiro(lista);
+    roteiroAj = null;
+    let roteiroOk = false;
+    if (roteiro) { try { roteiroAj = PASTA.lerRoteiro(await roteiro.arquivo.text()); roteiroOk = true; } catch (e) { roteiroOk = false; } }
     const usados = new Set();
     ajustes = grupos.map(g => {
       const deduzido = g.avisos.includes('número deduzido da ordem');
@@ -814,24 +819,41 @@
       return { grupo: g, alvo: alvo?.id || '', modo: null, previa: capa ? previa(capa.arquivo) : '', repetido,
         usar: !!alvo && !repetido && alvo.status !== 'aprovado' };
     });
+    // posts que só ganham texto novo: estão no roteiro, mas sem arte na pasta
+    const semPost = [];
+    for (const b of roteiroAj ? roteiroAj.values() : []) {
+      const p = posts.find(x => PASTA.mesmoNumero(x.numero, b.numero));
+      if (!p) { semPost.push(b.numero); continue; }
+      if (usados.has(p.id)) continue;
+      const a = { grupo: null, alvo: p.id, modo: null, previa: '', repetido: false, usar: p.status !== 'aprovado' };
+      if (textoDe(a).nomes.length) ajustes.push(a);
+    }
     const partes = [`${grupos.length} conjunto(s) de arte em ${fl.length} arquivo(s).`];
+    if (roteiro) partes.push(roteiroOk ? `Textos lidos de "${roteiro.nome}".` : `Não consegui ler "${roteiro.nome}": só as artes mudam.`);
+    if (semPost.length) partes.push(`O roteiro tem ${semPost.length > 1 ? 'os números' : 'o número'} ${semPost.join(', ')} sem post neste mês.`);
     const soltos = ajustes.filter(a => !a.alvo).length;
     if (soltos) partes.push(`${soltos} sem post com o mesmo número: escolha o post na lista ou deixe desmarcado.`);
     if (ignorados.length) partes.push(`${ignorados.length} arquivo(s) fora do padrão foram deixados de lado.`);
     $('msgAjustes').textContent = partes.join(' ');
-    $('msgAjustes').className = grupos.length ? 'msg' : 'msg err';
+    $('msgAjustes').className = ajustes.length ? 'msg' : 'msg err';
     renderAjustes();
   }
   const planoDe = a => PASTA.planejarAjuste(a.grupo, posts.find(p => p.id === a.alvo), a.modo);
-  const filaAjustes = () => ajustes.filter(a => a.usar && a.alvo && planoDe(a).ok);
+  // o texto segue o post que recebe, pelo número dele no roteiro
+  function textoDe(a) {
+    const p = posts.find(x => x.id === a.alvo);
+    return PASTA.textoAjuste(p && PASTA.blocoDe(roteiroAj, p.numero), p, canal !== 'instagram');
+  }
+  const filaAjustes = () => ajustes.filter(a => a.usar && a.alvo && planoDe(a).ok && (a.grupo || textoDe(a).nomes.length));
   function renderAjustes() {
     const L = $('ajustesLista');
     $('ajustesAcoes').hidden = !ajustes.length;
     if (!ajustes.length) { L.innerHTML = ''; return; }
     L.innerHTML = ajustes.map((a, i) => {
-      const p = posts.find(x => x.id === a.alvo), plano = planoDe(a);
+      const p = posts.find(x => x.id === a.alvo), plano = planoDe(a), t = textoDe(a);
       const capaAtual = p && (p.capa_url || (p.slides || [])[0]);
-      const avisos = [...(plano.ok ? plano.avisos : [plano.erro]),
+      const resumo = plano.ok ? [a.grupo ? plano.texto : '', t.nomes.length ? 'troca ' + t.nomes.join(', ') : a.grupo ? '' : 'o texto já é igual ao do roteiro'].filter(Boolean).join(' · ') : '';
+      const avisos = [...(plano.ok ? [...plano.avisos, ...t.avisos] : [plano.erro]),
         ...(a.repetido ? ['outro conjunto já vai para este post'] : []),
         ...(p?.status === 'aprovado' ? ['o cliente já aprovou este post'] : [])];
       const modo = plano.modo || a.modo;
@@ -840,15 +862,15 @@
         <div class="aj-troca" aria-hidden="true">
           <span class="aj-mini">${capaAtual ? `<img src="${esc(MEDIA.url(capaAtual))}" alt="">` : ''}</span>
           <svg class="i" viewBox="0 0 16 16"><path d="M3 8h10M9.5 4.5 13 8l-3.5 3.5"/></svg>
-          <span class="aj-mini nova">${a.previa ? `<img src="${esc(a.previa)}" alt="">` : '<small>vídeo</small>'}${a.grupo.arquivos.length > 1 ? `<b>${a.grupo.arquivos.length}</b>` : ''}</span>
+          <span class="aj-mini nova">${a.previa ? `<img src="${esc(a.previa)}" alt="">` : `<small>${a.grupo ? 'vídeo' : 'texto'}</small>`}${a.grupo && a.grupo.arquivos.length > 1 ? `<b>${a.grupo.arquivos.length}</b>` : ''}</span>
         </div>
         <div class="aj-info">
           <div class="aj-linha">
-            <small class="aj-origem" title="${esc(a.grupo.origem)}">${esc(a.grupo.origem.split('/').pop())}</small>
+            <small class="aj-origem" title="${esc(a.grupo ? a.grupo.origem : 'roteiro')}">${esc(a.grupo ? a.grupo.origem.split('/').pop() : 'roteiro')}</small>
             <select data-aj-alvo="${i}" aria-label="Post que recebe estas artes"><option value="">Escolha o post…</option>${posts.map(x => `<option value="${x.id}" ${x.id === a.alvo ? 'selected' : ''}>${esc(rotuloPost(x))}</option>`).join('')}</select>
             ${p ? `<span class="pill ${p.status}">${STATUS[p.status]}</span>` : ''}
           </div>
-          ${plano.ok ? `<p class="aj-plano">${esc(plano.texto)}</p>` : ''}
+          ${resumo ? `<p class="aj-plano">${esc(resumo)}</p>` : ''}
           ${plano.podeLaminas ? `<div class="seg" role="group" aria-label="Como trocar"><button type="button" data-aj-modo="${i}|laminas" class="${modo === 'laminas' ? 'on' : ''}">Só estas lâminas</button><button type="button" data-aj-modo="${i}|tudo" class="${modo === 'tudo' ? 'on' : ''}">Carrossel inteiro</button></div>` : ''}
           ${avisos.map(t => `<small class="alerta">${esc(t)}</small>`).join('')}
         </div>
@@ -864,7 +886,7 @@
       a.modo = m; a.usar = planoDe(a).ok; renderAjustes();
     });
     const n = filaAjustes().length;
-    $('btnAplicarAjustes').textContent = n ? `Substituir artes de ${n} post${n > 1 ? 's' : ''}` : 'Nada marcado para substituir';
+    $('btnAplicarAjustes').textContent = n ? `Aplicar ajustes em ${n} post${n > 1 ? 's' : ''}` : 'Nada marcado para aplicar';
     $('btnAplicarAjustes').disabled = !n;
   }
   $('btnAplicarAjustes').onclick = async () => {
@@ -872,6 +894,7 @@
     if (!mes || !fila.length) return;
     const avisar = $('chkAvisar').checked;
     const total = fila.reduce((n, a) => n + planoDe(a).envios.length, 0);
+    const textos = new Map(fila.map(a => [a, textoDe(a).campos]));   // antes de o post mudar
     let feitos = 0, trocados = 0;
     const travar = v => { $('btnAplicarAjustes').disabled = v; $('btnFecharAjustes').disabled = v; $('dropAjustes').classList.toggle('travado', v); };
     travar(true);
@@ -885,14 +908,14 @@
           if (!ref) throw new Error('Um arquivo não subiu. Os posts já trocados continuam trocados.');
           refs.push(ref);
         }
-        await run(sb.from('posts').update(plano.montar(refs)).eq('id', p.id));
+        await run(sb.from('posts').update({ ...plano.montar(refs), ...textos.get(a) }).eq('id', p.id));
         if (avisar && p.status !== 'pendente') await run(sb.rpc('marcar_ajustado', { p_post: p.id }));
         trocados++;
         ajustes = ajustes.filter(x => x !== a);   // se algo falhar depois, este não sobe de novo
       }
-      limparPrevias(); ajustes = []; renderAjustes();
+      limparPrevias(); ajustes = []; roteiroAj = null; renderAjustes();
       await selectMes(mes.id);
-      $('msgAjustes').textContent = `Pronto: ${trocados} post(s) com arte nova.${avisar ? ' Os que tinham retorno do cliente voltaram para Aguardando.' : ''}`;
+      $('msgAjustes').textContent = `Pronto: ${trocados} post(s) atualizado(s).${avisar ? ' Os que tinham retorno do cliente voltaram para Aguardando.' : ''}`;
       $('msgAjustes').className = 'msg ok';
     } catch (e) {
       $('msgAjustes').textContent = (trocados ? `${trocados} post(s) trocado(s) antes do erro. ` : '') + (e.message || 'Não foi possível subir os ajustes.');

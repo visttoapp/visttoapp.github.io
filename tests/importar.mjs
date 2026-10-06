@@ -234,4 +234,31 @@ assert.equal(PASTA.planejarAjuste(g[0], post('7', 'image', 1)).ok, false); ok();
 assert.equal(PASTA.planejarAjuste(ajustar(['x/05.png'])[0], post('05', 'texto')).ok, false); ok();
 assert.equal(PASTA.planejarAjuste(g[0], null).ok, false); ok();
 
+// ---------- subir ajustes com roteiro ----------
+const bl = PASTA.lerRoteiro('# 02\ntema: Vale-transporte\ntitulo: Fretamento substitui o VT\nlegenda:\nLegenda nova.\n\n# 05\ndata: 12/10\n\n# 7\nlegenda: Igual');
+const atual = { numero: '02', tema: 'Apps', titulo: 'Velho', legenda: 'Legenda velha', data: '08/10' };
+let t = PASTA.textoAjuste(PASTA.blocoDe(bl, '2'), atual, false);
+assert.deepEqual(t.campos, { tema: 'Vale-transporte', titulo: 'Fretamento substitui o VT', legenda: 'Legenda nova.' }); ok();
+assert.deepEqual(t.nomes, ['tema', 'título', 'legenda']); ok();
+// campo vazio no roteiro não apaga; igual ao atual não conta como mudança
+t = PASTA.textoAjuste(PASTA.blocoDe(bl, '05'), { numero: '05', legenda: 'fica', data: '' }, false);
+assert.deepEqual(t.campos, { data: '12/10' }); ok();
+t = PASTA.textoAjuste(PASTA.blocoDe(bl, '07'), { numero: '07', legenda: 'Igual' }, false);
+assert.deepEqual(t.nomes, []); ok();
+// anúncio não tem tema
+t = PASTA.textoAjuste(PASTA.blocoDe(bl, '02'), { numero: '02', tema: null, titulo: '', legenda: '' }, true);
+assert.ok(!('tema' in t.campos)); ok();
+assert.equal(PASTA.blocoDe(bl, '09'), null); ok();
+assert.equal(PASTA.blocoDe(null, '02'), null); ok();
+// só texto: a arte continua, nada é enviado
+plano = PASTA.planejarAjuste(null, { numero: '05', tipo: 'carousel', slides: ['a', 'b'] });
+assert.equal(plano.ok, true); ok();
+assert.equal(plano.envios.length, 0); ok();
+assert.deepEqual(plano.montar([]), {}); ok();
+assert.equal(PASTA.planejarAjuste(null, null).ok, false); ok();
+// a pasta de ajustes com roteiro: o roteiro não vira conjunto de arte e é achado na raiz
+const pastaAj = PASTA.prepararAjustes(arq(['SUBIR AJUSTES/roteiro.txt', 'SUBIR AJUSTES/02.png', 'SUBIR AJUSTES/12/3.png']), numeros.concat(['12']));
+assert.equal(PASTA.analisar(pastaAj).posts.length, 2); ok();
+assert.equal(PASTA.acharRoteiro(pastaAj).caminho, 'roteiro.txt'); ok();
+
 console.log('PASS:', checks, 'checks do leitor de pasta: carrosséis, estéticos, reels, ordem, número, descartes e ajustes.');
