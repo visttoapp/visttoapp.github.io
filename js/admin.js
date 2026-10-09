@@ -1033,45 +1033,89 @@
     $('msgExportar').textContent = '';
   });
   $('btnFecharExportar').onclick = fecharFerramentas;
-  $('btnGerarPdf').onclick = async () => {
-    const b = $('btnGerarPdf'), msg = $('msgExportar');
+  $('btnGerarPdf').onclick = () => gerarCom($('btnGerarPdf'), $('msgExportar'), () => gerarRelatorio($('expAlcance').value, $('expFiltro').value));
+  async function gerarCom(b, msg, fazer) {
     b.disabled = true; msg.textContent = 'Juntando os retornos…'; msg.className = 'msg';
     try {
-      await gerarRelatorio($('expAlcance').value, $('expFiltro').value);
+      await fazer(msg);
       msg.textContent = '';
     } catch (e) {
       msg.textContent = 'Não foi possível gerar o PDF: ' + (e.message || 'tente de novo.'); msg.className = 'msg err';
     } finally { b.disabled = false; }
-  };
+  }
 
-  async function gerarRelatorio(alcance, filtro) {
-    const ordemCanal = { instagram: 0, linkedin: 1 };
-    const lista = (alcance === 'mes' && mes ? [mes] : [...todosMeses])
-      .sort((a, b) => (ordemCanal[a.canal || 'instagram'] - ordemCanal[b.canal || 'instagram']) || b.ano_mes.localeCompare(a.ano_mes));
-    if (!lista.length) throw new Error('este cliente ainda não tem mês.');
+  const ordemCanal = { instagram: 0, linkedin: 1 };
+  const porCanal = (a, b) => (ordemCanal[a.canal || 'instagram'] - ordemCanal[b.canal || 'instagram']) || b.ano_mes.localeCompare(a.ano_mes);
+  const filtroTxt = { retorno: 'posts com retorno do cliente', ajuste: 'posts com ajuste pedido', todos: 'todos os posts' };
+  const nadaPara = filtro => filtro === 'ajuste' ? 'nenhum post está com ajuste pedido.' : filtro === 'retorno' ? 'o cliente ainda não deixou nenhum retorno aqui.' : 'não há posts para exportar.';
+  // posts de cada mês com o histórico de respostas em ordem, já passados pelo filtro
+  async function gruposDoRelatorio(lista, filtro) {
     const todos = await run(sb.from('posts').select('*, aprovacoes(*)').in('mes_id', lista.map(m => m.id)).order('ordem'));
     const doCliente = p => p.aprovacoes.some(a => (a.origem || 'cliente') === 'cliente');
-    const passa = p => filtro === 'todos' || (filtro === 'ajuste' ? p.status === 'ajuste' : doCliente(p));
-    const grupos = lista.map(m => ({
+    // revisão interna e gaveta ficam de fora: o cliente nunca viu esses posts
+    const passa = p => !p.interno && (filtro === 'todos' || (filtro === 'ajuste' ? p.status === 'ajuste' : doCliente(p)));
+    return lista.map(m => ({
       mes: m,
       posts: todos.filter(p => p.mes_id === m.id).map(p => ({ ...p, aprovacoes: (p.aprovacoes || []).sort((x, y) => x.created_at.localeCompare(y.created_at)) })).filter(passa)
     })).filter(g => g.posts.length);
-    if (!grupos.length) throw new Error(filtro === 'ajuste' ? 'nenhum post está com ajuste pedido.' : filtro === 'retorno' ? 'o cliente ainda não deixou nenhum retorno aqui.' : 'não há posts para exportar.');
+  }
 
+  async function gerarRelatorio(alcance, filtro) {
+    const lista = (alcance === 'mes' && mes ? [mes] : [...todosMeses]).sort(porCanal);
+    if (!lista.length) throw new Error('este cliente ainda não tem mês.');
+    const grupos = await gruposDoRelatorio(lista, filtro);
+    if (!grupos.length) throw new Error(nadaPara(filtro));
+    const escopo = alcance === 'mes' && mes ? mes.titulo : 'Todos os meses';
+    await imprimirRelatorio({
+      rotulo: 'retornos do cliente', titulo: cliente.nome, sub: `${escopo} · ${filtroTxt[filtro]}`,
+      secoes: [{ grupos }], comArtes: true, arquivo: `Retornos - ${cliente.nome} - ${escopo}`, msg: $('msgExportar')
+    });
+  }
+
+  // Relatório da agência inteira (visão geral): um bloco por cliente, só para Head e acima.
+  async function gerarRelatorioGeral(msg) {
+    if (nivel < 2) throw new Error('só Head e administradores baixam esse relatório.');
+    const alvo = $('relCliente').value, anoMes = $('relMes').value, filtro = $('relFiltro').value;
+    const escolhidos = (alvo ? clientes.filter(c => c.id === alvo) : [...clientes]).sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'));
+    if (!escolhidos.length) throw new Error('nenhum cliente para exportar.');
+    const nomeMes = PAINEL.nomeMes(anoMes);
+    const ms = (await run(sb.from('meses').select('*').in('cliente_id', escolhidos.map(c => c.id)).eq('ano_mes', anoMes)))
+      .filter(m => CANAIS[m.canal || 'instagram']).sort(porCanal);
+    if (!ms.length) throw new Error(`${alvo ? 'esse cliente não tem' : 'nenhum cliente tem'} ${nomeMes.toLowerCase()} ainda.`);
+    const grupos = await gruposDoRelatorio(ms, filtro);
+    // com um cliente só escolhido, o nome já está no título; com todos, cada um ganha seu bloco
+    const secoes = escolhidos.map(c => ({ cliente: alvo ? null : c.nome, grupos: grupos.filter(g => g.mes.cliente_id === c.id) })).filter(s => s.grupos.length);
+    if (!secoes.length) throw new Error(filtro === 'ajuste' ? `nenhum post de ${nomeMes.toLowerCase()} está com ajuste pedido.` : filtro === 'retorno' ? `nenhum cliente deixou retorno em ${nomeMes.toLowerCase()} ainda.` : 'não há posts para exportar.');
+    const quem = alvo ? escolhidos[0].nome : agencia?.nome || BRAND.NOME;
+    await imprimirRelatorio({
+      rotulo: alvo ? 'retornos do cliente' : 'retornos dos clientes', titulo: alvo ? quem : `${quem} · ${nomeMes}`,
+      sub: `${alvo ? nomeMes + ' · ' : `${secoes.length} cliente${secoes.length > 1 ? 's' : ''} · `}${filtroTxt[filtro]}`,
+      secoes, comArtes: $('relArtes').value === 'sim', arquivo: `Retornos - ${quem} - ${nomeMes}`, msg
+    });
+  }
+
+  async function imprimirRelatorio({ rotulo, titulo, sub, secoes, comArtes, arquivo, msg }) {
+    const grupos = secoes.flatMap(s => s.grupos);
     // miniaturas: capa do reel ou todas as lâminas do carrossel; meses arquivados já não têm arte
     const miniaturas = p => p.tipo === 'reel' ? [p.capa_url].filter(Boolean) : (p.slides || []);
-    const refs = grupos.filter(g => !g.mes.arquivado_em).flatMap(g => g.posts.flatMap(miniaturas));
     let semArtes = false;
-    try { await MEDIA.prepare(sb, refs); } catch { semArtes = true; }
+    if (comArtes) {
+      const refs = grupos.filter(g => !g.mes.arquivado_em).flatMap(g => g.posts.flatMap(miniaturas));
+      try { await MEDIA.prepare(sb, refs); } catch { semArtes = true; }
+    }
 
-    const postsTodos = grupos.flatMap(g => g.posts);
-    const conta = s => postsTodos.filter(p => p.status === s).length;
-    const comentarios = postsTodos.reduce((n, p) => n + p.aprovacoes.filter(a => a.acao !== 'aprovado' && (a.origem || 'cliente') === 'cliente').length, 0);
-    const escopo = alcance === 'mes' && mes ? mes.titulo : 'Todos os meses';
-    const filtroTxt = { retorno: 'posts com retorno do cliente', ajuste: 'posts com ajuste pedido', todos: 'todos os posts' }[filtro];
+    const doCliente = a => (a.origem || 'cliente') === 'cliente';
+    const numeros = ps => ({
+      posts: ps.length,
+      aprovado: ps.filter(p => p.status === 'aprovado').length,
+      ajuste: ps.filter(p => p.status === 'ajuste').length,
+      pendente: ps.filter(p => p.status === 'pendente').length,
+      escritos: ps.reduce((n, p) => n + p.aprovacoes.filter(a => a.acao !== 'aprovado' && doCliente(a)).length, 0)
+    });
+    const total = numeros(grupos.flatMap(g => g.posts));
 
     const thumbs = (g, p) => {
-      if (p.tipo === 'texto') return '';
+      if (!comArtes || p.tipo === 'texto') return '';
       if (g.mes.arquivado_em) return '<p class="rel-aviso">Artes arquivadas: já saíram do servidor.</p>';
       const refsPost = miniaturas(p);
       if (!refsPost.length) return '';
@@ -1096,31 +1140,40 @@
         <div class="rel-post-head"><div><h3>Post ${esc(p.numero || '')} · ${esc(nome)}</h3><p>${detalhes.map(esc).join(' · ')}</p></div><span class="rel-status ${esc(p.status)}">${STATUS[p.status] || esc(p.status)}</span></div>
         ${thumbs(g, p)}${historico(p)}</article>`;
     };
+    const mesHTML = g => `<section class="rel-mes"><h2>${esc(CANAIS[g.mes.canal || 'instagram'])} · ${esc(g.mes.titulo)}${g.mes.objetivo ? ' · ' + esc(g.mes.objetivo) : ''}</h2>${g.posts.map(p => bloco(g, p)).join('')}</section>`;
+    // com vários clientes, uma tabela no começo mostra onde está o trabalho antes do detalhe
+    const indice = secoes.length > 1 ? `<table class="rel-indice"><thead><tr><th>Cliente</th><th>Posts</th><th>Aprovados</th><th>Com ajuste</th><th>Aguardando</th><th>Ajustes e comentários</th></tr></thead><tbody>${secoes.map(s => {
+      const n = numeros(s.grupos.flatMap(g => g.posts));
+      return `<tr><td>${esc(s.cliente)}</td><td>${n.posts}</td><td>${n.aprovado}</td><td>${n.ajuste}</td><td>${n.pendente}</td><td>${n.escritos}</td></tr>`;
+    }).join('')}</tbody></table>` : '';
 
     document.getElementById('relatorio')?.remove();
     const rel = document.createElement('div');
     rel.id = 'relatorio';
-    rel.innerHTML = `<header class="rel-capa"><small>${esc(agencia?.nome || BRAND.NOME)} · retornos do cliente</small><h1>${esc(cliente.nome)}</h1>
-        <p>${esc(escopo)} · ${filtroTxt}</p>
-        <div class="rel-resumo"><span><b>${postsTodos.length}</b> post(s)</span><span><b>${conta('aprovado')}</b> aprovado(s)</span><span><b>${conta('ajuste')}</b> com ajuste</span><span><b>${conta('pendente')}</b> aguardando</span><span><b>${comentarios}</b> ajuste(s) e comentário(s) escritos</span></div></header>
-      ${grupos.map(g => `<section class="rel-mes"><h2>${esc(CANAIS[g.mes.canal || 'instagram'])} · ${esc(g.mes.titulo)}${g.mes.objetivo ? ' · ' + esc(g.mes.objetivo) : ''}</h2>${g.posts.map(p => bloco(g, p)).join('')}</section>`).join('')}
+    rel.innerHTML = `<header class="rel-capa"><small>${esc(agencia?.nome || BRAND.NOME)} · ${esc(rotulo)}</small><h1>${esc(titulo)}</h1>
+        <p>${esc(sub)}</p>
+        <div class="rel-resumo"><span><b>${total.posts}</b> post(s)</span><span><b>${total.aprovado}</b> aprovado(s)</span><span><b>${total.ajuste}</b> com ajuste</span><span><b>${total.pendente}</b> aguardando</span><span><b>${total.escritos}</b> ajuste(s) e comentário(s) escritos</span></div></header>
+      ${indice}
+      ${secoes.map(s => s.cliente ? `<section class="rel-cliente"><h2 class="rel-cliente-nome">${esc(s.cliente)}</h2>${s.grupos.map(mesHTML).join('')}</section>` : s.grupos.map(mesHTML).join('')).join('')}
       <footer class="rel-rodape">Gerado em ${dataHora(new Date())} pelo painel ${esc(BRAND.NOME)}.${semArtes ? ' Algumas artes não puderam ser carregadas.' : ''}</footer>`;
     document.body.appendChild(rel);
 
     // espera as miniaturas carregarem (até 20 s) para não sair PDF com buraco
-    $('msgExportar').textContent = 'Carregando as miniaturas…';
-    await Promise.race([
-      Promise.all([...rel.querySelectorAll('img')].map(img => img.complete ? null : new Promise(ok => {
-        img.onload = ok;
-        img.onerror = () => { const s = document.createElement('span'); s.className = 'sem-arte'; s.textContent = 'arte indisponível'; img.replaceWith(s); ok(); };
-      }))),
-      new Promise(ok => setTimeout(ok, 20000))
-    ]);
+    if (rel.querySelector('img')) {
+      msg.textContent = 'Carregando as miniaturas…';
+      await Promise.race([
+        Promise.all([...rel.querySelectorAll('img')].map(img => img.complete ? null : new Promise(ok => {
+          img.onload = ok;
+          img.onerror = () => { const s = document.createElement('span'); s.className = 'sem-arte'; s.textContent = 'arte indisponível'; img.replaceWith(s); ok(); };
+        }))),
+        new Promise(ok => setTimeout(ok, 20000))
+      ]);
+    }
 
     // o título da página vira o nome sugerido do arquivo PDF
     const tituloAntes = document.title;
     const limpar = () => { document.body.classList.remove('imprimindo'); document.title = tituloAntes; rel.remove(); };
-    document.title = `Retornos - ${cliente.nome} - ${escopo}`.replace(/[\\/:*?"<>|]/g, '-');
+    document.title = arquivo.replace(/[\\/:*?"<>|]/g, '-');
     document.body.classList.add('imprimindo');
     window.addEventListener('afterprint', limpar, { once: true });
     window.print();
@@ -1263,6 +1316,8 @@
       $('titulo').textContent = agencia ? agencia.nome : '—';
       $('titulo').title = '';
       renderEntregas();
+      $('btnRelGeral').hidden = nivel < 2;
+      $('cardRelGeral').hidden = true;
       await carregarGeral();
     } else {
       $('titulo').title = nivel >= 2 ? 'Editar cliente' : '';
@@ -1301,6 +1356,19 @@
     finally { $('geral').classList.remove('carregando'); }
   }
   $('geralMes').onchange = carregarGeral;
+  $('btnRelGeral').onclick = () => {
+    const card = $('cardRelGeral');
+    if (!card.hidden) { card.hidden = true; return; }
+    $('relCliente').innerHTML = `<option value="">Todos os clientes (${clientes.length})</option>`
+      + [...clientes].sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR')).map(c => `<option value="${c.id}">${esc(c.nome)}</option>`).join('');
+    $('relMes').innerHTML = $('geralMes').innerHTML;
+    $('relMes').value = $('geralMes').value;
+    $('msgRelGeral').textContent = '';
+    card.hidden = false;
+    card.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+  };
+  $('btnFecharRelGeral').onclick = () => { $('cardRelGeral').hidden = true; };
+  $('btnGerarRelGeral').onclick = () => gerarCom($('btnGerarRelGeral'), $('msgRelGeral'), gerarRelatorioGeral);
   let abaGeral = 'clientes';
   document.querySelectorAll('#geralAbas [data-aba]').forEach(b => b.onclick = () => { abaGeral = b.dataset.aba; renderGeral(); });
 

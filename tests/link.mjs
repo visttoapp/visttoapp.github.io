@@ -34,7 +34,7 @@ for (const [am, k] of [['2026-01', 'instagram'], ['2026-12', 'linkedin'], ['2030
   assert.equal(r.m, am); assert.equal(r.canal || 'instagram', k); ok();
 }
 
-/* ---------- supabase/link-curto.sql ---------- */
+/* ---------- supabase/historico/link-curto.sql ---------- */
 const db = new PGlite();
 await db.exec(`create role anon;create role authenticated;create role service_role bypassrls;
 create schema auth;create schema storage;create schema extensions;
@@ -52,8 +52,8 @@ for (const f of ['multi-agencias', 'hierarquia', 'squads', 'convites', 'divisoes
 await db.exec(rd('../supabase/historico/pauta-e-linkedin.sql'));
 const B = '10000000-0000-4000-8000-000000000002';
 const antes = (await db.query(`insert into clientes(agencia_id,nome,slug,token) values($1,'Antigo','antigo',$2) returning id`, [B, 'ef'.repeat(32)])).rows[0].id;
-await db.exec(rd('../supabase/link-curto.sql'));
-await db.exec(rd('../supabase/link-curto.sql'));   // rodar de novo não pode quebrar
+await db.exec(rd('../supabase/historico/link-curto.sql'));
+await db.exec(rd('../supabase/historico/link-curto.sql'));   // rodar de novo não pode quebrar
 const q = (s, p) => db.query(s, p), rows = async (s, p) => (await q(s, p)).rows;
 const P = { head: 'head', des: 'designer' };
 const id = { head: '91000000-0000-4000-8000-000000000001', des: '91000000-0000-4000-8000-000000000002' };

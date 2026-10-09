@@ -39,7 +39,8 @@ window.MEDIA = (() => {
       const doR2 = faltando.filter(r2);
       const doStorage = faltando.filter(v => !r2(v));
       await Promise.all([
-        doR2.length ? pedirR2(sb, doR2) : null,
+        // a função "midia" aceita até 200 por pedido; o relatório da agência pode passar disso
+        ...Array.from({ length: Math.ceil(doR2.length / 200) }, (_, i) => pedirR2(sb, doR2.slice(i * 200, i * 200 + 200))),
         ...doStorage.map(async v => {
           const { data: s, error } = await sb.storage.from('midia').createSignedUrl(path(v), 3600);
           if (error) throw error;

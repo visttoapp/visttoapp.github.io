@@ -52,23 +52,18 @@ O link que o painel copia é curto e legível: `visttoapp.github.io/c#prime-plus
 O link funciona como chave. **Invalidar link antigo e gerar outro** revoga o anterior, no formato curto e no antigo. URLs temporárias de mídia já emitidas duram até uma hora. O status de um post só muda pela resposta do cliente ou por "marcar como ajustado".
 
 ## Canais: Instagram e LinkedIn
-Na barra lateral, **Canal** troca entre Instagram e LinkedIn. Os dois funcionam igual: mês, número, tema, título, legenda e artes (imagem, carrossel ou vídeo), com importar pasta, subir ajustes e roteiro. Cada cliente tem um mês de cada canal. O cliente aprova pelo mesmo link: a página ganha uma aba por canal com algo publicado, e o LinkedIn aparece em uma coluna, no formato do feed da rede. O link de um mês de LinkedIn leva o id da entrega (`#t=...&e=...`).
+Na barra lateral, **Canal** troca entre Instagram e LinkedIn. Os dois funcionam igual: mês, número, tema, título, legenda e artes (imagem, carrossel ou vídeo), com importar pasta, subir ajustes e roteiro. Cada cliente tem um mês de cada canal. O cliente aprova pelo mesmo link: a página ganha uma aba por canal com algo publicado. Nos dois canais, o cliente escolhe entre **Grade** (miniaturas; o post abre por cima) e **Post** (um embaixo do outro, com a prévia de um lado e legenda, aprovação e histórico do outro). O Instagram abre em grade e o LinkedIn em post; a escolha fica guardada no navegador do cliente. O link de um mês de LinkedIn leva o id da entrega (`#t=...&e=...`).
 
 Meta Ads e Google Ads saíram do painel e do link do cliente. As campanhas antigas continuam guardadas no banco, sem aparecer em lugar nenhum, e as colunas de anúncio (`conjunto`, `publico`, `descricao`, `cta`, `destino`, `objetivo`) ficaram para não perder dado.
 
 ## Visão geral, entregas e pauta
 Ao entrar numa agência, o painel abre na **Visão geral**: os números do mês (posts, com o cliente, em ajuste, aprovados, atrasados) e um cartão por cliente com a barra de aprovados e o que está atrasado. Atrasado é post com dia previsto já passado e ainda sem aprovação. Duas abas completam a tela: **Pauta da semana**, com os posts de cada pessoa por dia, e **Aprovação**, com quanto tempo cada cliente costuma levar para responder, quantos ajustes pede por post e quanto aprova de primeira (últimos três meses). As contas ficam em `js/painel.js`, coberto por `tests/painel.mjs`.
 
+Head, sócio e dono veem ainda **Baixar retornos**, que junta num PDF os ajustes, comentários e aprovações de todos os clientes do mês (ou de um só), com autor e data, uma tabela de resumo no começo e um bloco por cliente. Dá para escolher só os posts com retorno, só os com ajuste ou todos, e levar ou não as miniaturas das artes. Posts em revisão interna ou na gaveta ficam fora, porque o cliente nunca os viu. O PDF sai pela janela de impressão do navegador, em **Salvar como PDF**, como o **Exportar PDF** de cada cliente.
+
 Dentro do cliente, os meses aparecem como **entregas**, com progresso. Os posts podem ser vistos em lista ou em quadro (Aguardando, Ajuste, Aprovado), e o formulário de post só abre ao criar ou editar. Os retornos do cliente atualizam sozinhos quando a aba volta a ficar visível.
 
 Cada post pode ter um **responsável** da equipe e ficar em **revisão interna** (o Head libera antes de o cliente ver) ou na **gaveta** (reserva, fora do link). O cliente não vê nem responde a post em revisão ou na gaveta, e só Head, sócio e dono tiram um post da revisão. Avisos e confirmações do painel saem de `js/ui.js`, no lugar das caixas do navegador.
-
-### Para ligar o link curto no projeto em uso
-Nesta ordem (ao contrário, o painel passa a copiar um link curto que a função ainda não sabe abrir):
-1. Publique de novo a função `cliente` (no painel do Supabase, Edge Functions › cliente › Code, colando o `supabase/functions/cliente/index.ts` inteiro, ou `supabase functions deploy cliente --no-verify-jwt`).
-2. Rode `supabase/link-curto.sql` no SQL Editor. Pode rodar de novo sem estragar nada.
-
-Antes disso, o painel continua copiando o link antigo, que segue funcionando.
 
 ## Importar a pasta do mês
 Com o mês aberto, **Importar pasta** (no topo) lê uma pasta do computador e monta os posts. A regra: pasta com várias artes vira carrossel na ordem dos nomes, arte solta vira post de imagem, `.mp4` vira reel e puxa a capa de mesmo nome ou número. Pastas de categoria (`carrosseis`, `esteticos`, `feed`, `reels`, `stories`, `artes`…) são só organização e não viram post. Pastas de trabalho (`brutos`, `psd`, `editaveis`, `fontes`, `refs`, `backup`) e formatos fora de JPG, PNG, WebP, GIF e MP4 ficam de fora.

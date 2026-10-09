@@ -9,9 +9,9 @@
 <link rel="icon" href="assets/vistto.svg" type="image/svg+xml">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Cormorant+Garamond:wght@500&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/style.css?v=20261009c"><link rel="stylesheet" href="css/agencies.css?v=20261009c">
+<link rel="stylesheet" href="css/style.css?v=20261009d"><link rel="stylesheet" href="css/agencies.css?v=20261009d">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="js/config.js?v=20261009c"></script>
+<script src="js/config.js?v=20261009d"></script>
 </head>
 <body class="admin" data-tema="neutro"><script>if (new URLSearchParams(location.search).has("t") || new URLSearchParams(location.hash.slice(1)).has("t")) location.replace("c" + location.search + location.hash);</script>
 
@@ -111,7 +111,28 @@
             <button role="tab" data-aba="pauta">Pauta da semana</button>
             <button role="tab" data-aba="aprovacao">Aprovação</button>
           </div>
-          <select id="geralMes" aria-label="Mês"></select>
+          <div class="geral-acoes">
+            <button class="btn" id="btnRelGeral" title="Ajustes, comentários e aprovações de todos os clientes num PDF" hidden><svg class="i" viewBox="0 0 16 16"><path d="M4 1.5h5.5L13 5v8.5a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1v-11a1 1 0 0 1 1-1z"/><path d="M9.5 1.5V5H13M8 7.5v4.5M6 10l2 2 2-2"/></svg>Baixar retornos</button>
+            <select id="geralMes" aria-label="Mês"></select>
+          </div>
+        </div>
+        <div class="card" id="cardRelGeral" hidden>
+          <div class="card-head"><div><h4>Baixar retornos em PDF</h4><p>Junta num arquivo os ajustes, comentários e aprovações dos clientes, com autor e data, separados por cliente. Na janela que abrir, escolha <b>Salvar como PDF</b>.</p></div><button class="btn sm" id="btnFecharRelGeral">Fechar</button></div>
+          <div class="form-grid">
+            <div class="field"><label class="label" for="relCliente">Clientes</label><select id="relCliente"></select></div>
+            <div class="field"><label class="label" for="relMes">Mês</label><select id="relMes"></select></div>
+            <div class="field"><label class="label" for="relFiltro">Quais posts</label><select id="relFiltro">
+              <option value="retorno">Só os que têm retorno do cliente</option>
+              <option value="ajuste">Só os que estão com ajuste pedido</option>
+              <option value="todos">Todos, com ou sem retorno</option>
+            </select></div>
+            <div class="field"><label class="label" for="relArtes">Artes</label><select id="relArtes">
+              <option value="nao">Só o texto (arquivo leve)</option>
+              <option value="sim">Com miniaturas das artes</option>
+            </select></div>
+          </div>
+          <div class="actions"><button class="btn primary" id="btnGerarRelGeral">Gerar PDF</button></div>
+          <div class="msg" id="msgRelGeral" role="status"></div>
         </div>
         <div class="kpis" id="geralKpis"></div>
         <div id="geralClientes" class="cli-grid"></div>
@@ -294,6 +315,6 @@
   </main>
 </div>
 
-<script src="js/link.js?v=20261009c"></script><script src="js/ui.js?v=20261009c"></script><script src="js/painel.js?v=20261009c"></script><script src="js/brand.js?v=20261009c"></script><script src="js/media.js?v=20261009c"></script><script src="js/importar.js?v=20261009c"></script><script src="js/admin.js?v=20261009c"></script>
+<script src="js/link.js?v=20261009d"></script><script src="js/ui.js?v=20261009d"></script><script src="js/painel.js?v=20261009d"></script><script src="js/brand.js?v=20261009d"></script><script src="js/media.js?v=20261009d"></script><script src="js/importar.js?v=20261009d"></script><script src="js/admin.js?v=20261009d"></script>
 </body>
 </html>
