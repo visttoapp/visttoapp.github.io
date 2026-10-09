@@ -574,6 +574,140 @@ body[data-tema="escuro"] .txtad b{color:#8ab4f8}
 .escolha-item small{color:var(--text-2);font-size:12.5px}
 .escolha-tag{flex:none;padding:2px 8px;border-radius:999px;background:var(--surface-2)}
 
+/* ================= AVISOS E CONFIRMAÇÕES (js/ui.js) ================= */
+.avisos{position:fixed;right:20px;bottom:20px;z-index:60;display:flex;flex-direction:column;gap:8px;align-items:flex-end;pointer-events:none}
+.toast{pointer-events:auto;max-width:380px;padding:10px 14px;border-radius:var(--r);background:var(--text);color:var(--surface);font-size:13px;line-height:18px;box-shadow:var(--shadow-pop);cursor:pointer;animation:toastEntra .18s ease-out}
+.toast.erro{background:var(--danger);color:#fff}
+.toast.saindo{opacity:0;transform:translateY(4px);transition:opacity .18s,transform .18s}
+@keyframes toastEntra{from{opacity:0;transform:translateY(6px)}}
+.dialogo-fundo{position:fixed;inset:0;z-index:70;background:var(--overlay);display:grid;place-items:center;padding:16px}
+.dialogo{width:min(440px,100%);background:var(--surface);border:1px solid var(--border);border-radius:var(--r-xl);box-shadow:var(--shadow-pop);padding:22px 22px 18px}
+.dialogo h3{font-size:17px;line-height:24px;margin-bottom:6px}
+.dialogo p{color:var(--text-2);font-size:14px;line-height:21px;white-space:pre-line}
+.dialogo input{margin-top:14px}
+.dialogo .actions{justify-content:flex-end;margin-top:20px}
+.btn.perigo{background:var(--danger);border-color:var(--danger);color:#fff}
+.btn.perigo:hover{filter:brightness(.94)}
+.btn.perigo-texto{color:var(--danger)}
+.btn.perigo-texto:hover{background:var(--danger-soft);color:var(--danger)}
+#btnExcluirPost{margin-left:auto}
+@media (prefers-reduced-motion:reduce){.toast{animation:none}.toast.saindo{transition:none}}
+
+/* ================= VISÃO GERAL ================= */
+body.vendo-geral #entregas,body.vendo-geral #summary,body.vendo-geral #cardLink,body.vendo-geral #cardPost,body.vendo-geral .lista-card,body.vendo-geral .page-head .actions,body.vendo-geral .ferramenta,body.vendo-geral #cardMes{display:none!important}
+body.vendo-equipe #geral,body.vendo-espaco #geral,body.vendo-equipe #entregas,body.vendo-espaco #entregas{display:none!important}
+#geral{display:flex;flex-direction:column;gap:16px;margin-bottom:16px}
+#geral.carregando .kpis,#geral.carregando .cli-grid,#geral.carregando .card{opacity:.55;transition:opacity .2s}
+.geral-barra{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.geral-barra .seg button{min-height:30px;padding:0 14px;font-size:13px}
+#geralMes{width:auto;min-width:190px;min-height:34px;padding-top:4px;padding-bottom:4px;font-size:13px}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px}
+.kpi{background:var(--surface);border:1px solid var(--border);border-radius:var(--r-lg);padding:14px 16px;box-shadow:var(--shadow-soft)}
+.kpi b{display:block;font-size:26px;line-height:32px;font-weight:600;letter-spacing:-.02em}
+.kpi span{display:block;font-size:13px;color:var(--text-2)}
+.kpi.k-pendente b{color:var(--brand-text)}
+.kpi.k-ajuste b{color:var(--warning)}
+.kpi.k-aprovado b{color:var(--success)}
+.kpi.k-revisao b{color:var(--text-2)}
+.kpi.k-atraso{border-color:var(--danger-border);background:var(--danger-soft)}
+.kpi.k-atraso b{color:var(--danger)}
+.cli-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:12px}
+.cli{display:flex;flex-direction:column;gap:10px;text-align:left;padding:16px;background:var(--surface);border:1px solid var(--border);border-radius:var(--r-lg);box-shadow:var(--shadow-soft);color:var(--text);transition:border-color .15s,transform .15s}
+.cli:hover{border-color:var(--border-strong);transform:translateY(-1px)}
+.cli-topo{display:flex;align-items:center;gap:10px;min-width:0}
+.cli-av,.av{display:inline-grid;place-items:center;flex:none;border-radius:50%;background:var(--brand-soft);color:var(--brand-text);font-weight:600}
+.cli-av{width:34px;height:34px;font-size:13px}
+.av{width:24px;height:24px;font-size:10.5px;border:2px solid var(--surface)}
+.av.vazio{background:var(--surface-3);color:var(--text-3)}
+.cli-nome{display:flex;flex-direction:column;min-width:0;flex:1}
+.cli-nome b{font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.cli-nome small,.cli-linha small{color:var(--text-2);font-size:12px}
+.cli-linha{display:flex;justify-content:space-between;gap:8px}
+.cli-chips{display:flex;flex-wrap:wrap;gap:4px}
+.cli-chips:empty{display:none}
+.chip-st{padding:1px 8px;border-radius:99px;font-size:11.5px;font-weight:500;border:1px solid var(--border);background:var(--surface-2);color:var(--text-2)}
+.chip-st.pendente{background:var(--brand-soft);border-color:var(--brand-border);color:var(--brand-text)}
+.chip-st.ajuste{background:var(--warning-soft);border-color:var(--warning-border);color:var(--warning)}
+.chip-st.atraso{background:var(--danger-soft);border-color:var(--danger-border);color:var(--danger)}
+.progresso{display:block;height:6px;border-radius:99px;background:var(--surface-3);overflow:hidden}
+.progresso i{display:block;height:100%;border-radius:99px;background:var(--success);transition:width .3s}
+.estado{flex:none;padding:1px 8px;border-radius:99px;font-size:11px;font-weight:600;background:var(--surface-3);color:var(--text-2)}
+.estado.e-andando{background:var(--brand-soft);color:var(--brand-text)}
+.estado.e-ok{background:var(--success-soft);color:var(--success)}
+.estado.e-rascunho{background:var(--surface-3);color:var(--text-3)}
+.vazio-geral{grid-column:1/-1;padding:32px 16px;text-align:center;color:var(--text-2)}
+/* pauta da semana: pessoas nas linhas, dias nas colunas */
+.pauta-wrap{overflow-x:auto;margin:0 -20px -20px;border-top:1px solid var(--border)}
+.pauta{display:grid;grid-template-columns:180px repeat(7,minmax(130px,1fr));min-width:1100px}
+.pauta>.vazio-geral{grid-column:1/-1}
+.pauta-canto,.pauta-dia{padding:10px 12px;border-bottom:1px solid var(--border);background:var(--surface-2)}
+.pauta-dia b{display:block;font-size:12.5px;font-weight:600;text-transform:capitalize}
+.pauta-dia small{font-size:11.5px;color:var(--text-3)}
+.pauta-dia.hoje b{color:var(--brand-text)}
+.pauta-pessoa{display:flex;align-items:flex-start;gap:8px;padding:12px;border-bottom:1px solid var(--border)}
+.pauta-pessoa .av{width:30px;height:30px;font-size:11.5px}
+.pauta-pessoa b{display:block;font-size:13px;font-weight:600}
+.pauta-pessoa small{font-size:11.5px;color:var(--text-3)}
+.pauta-celula{display:flex;flex-direction:column;gap:6px;padding:8px;border-bottom:1px solid var(--border);border-left:1px solid var(--border);min-height:64px}
+.pauta-celula.hoje{background:var(--brand-soft)}
+.tarefa{display:flex;flex-direction:column;align-items:flex-start;gap:4px;width:100%;text-align:left;padding:8px 10px;border:1px solid var(--border);border-left:3px solid var(--border-strong);border-radius:var(--r);background:var(--surface);color:var(--text);box-shadow:var(--shadow-xs)}
+.tarefa:hover{border-color:var(--border-strong)}
+.tarefa small{font-size:11px;color:var(--text-3)}
+.tarefa b{font-size:12.5px;font-weight:500;line-height:17px}
+.tarefa .pill{min-height:20px;padding:0 6px;font-size:11px}
+.tarefa.t-pendente{border-left-color:var(--brand)}
+.tarefa.t-ajuste{border-left-color:var(--warning)}
+.tarefa.t-aprovado{border-left-color:var(--success);opacity:.7}
+.tarefa.t-aprovado b{text-decoration:line-through}
+.tarefa.t-revisao{border-left-color:var(--text-3)}
+.tabela-aprovacao{min-width:620px}
+.tabela-aprovacao tr.total td{background:var(--surface-2)}
+.link-cli{color:var(--brand-text);font-weight:500;text-align:left}
+.link-cli:hover{text-decoration:underline}
+
+/* ================= CLIENTE: ENTREGAS, LISTA E QUADRO ================= */
+.entregas{display:flex;gap:10px;overflow-x:auto;padding:2px 2px 6px;margin:-4px -2px 14px;scrollbar-width:thin}
+.entrega{flex:0 0 220px;display:flex;flex-direction:column;gap:8px;text-align:left;padding:12px 14px;background:var(--surface);border:1px solid var(--border);border-radius:var(--r-lg);color:var(--text);box-shadow:var(--shadow-xs);transition:border-color .15s}
+.entrega:hover{border-color:var(--border-strong)}
+.entrega.on{border-color:var(--brand);box-shadow:0 0 0 3px var(--brand-soft)}
+.entrega-topo{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.entrega-topo b{font-size:13.5px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.entrega>small{font-size:12px;color:var(--text-2)}
+.entrega.nova{flex-basis:150px;flex-direction:row;align-items:center;justify-content:center;gap:6px;border-style:dashed;color:var(--brand-text);font-weight:500;box-shadow:none;background:transparent}
+/* a cor do status na borda da linha, para bater o olho */
+#lista tr td:first-child{box-shadow:inset 3px 0 0 var(--border-strong)}
+#lista tr.st-pendente td:first-child{box-shadow:inset 3px 0 0 var(--brand)}
+#lista tr.st-ajuste td:first-child{box-shadow:inset 3px 0 0 var(--warning)}
+#lista tr.st-aprovado td:first-child{box-shadow:inset 3px 0 0 var(--success)}
+#lista tr.st-reserva td{opacity:.75}
+#lista tr.empty-row td{box-shadow:none}
+.sem-capa{display:block;width:44px;aspect-ratio:3/4;border-radius:var(--r-sm);background:var(--surface-3);border:1px solid var(--border)}
+.resp{display:flex;align-items:center;gap:6px;margin-top:6px}
+.resp .av{width:20px;height:20px;font-size:9.5px;border:0}
+.pill.revisao{background:var(--surface-3);border-color:var(--border-strong);color:var(--text-2)}
+.pill.reserva{background:var(--surface-2);border-style:dashed;color:var(--text-3)}
+.row-actions button[data-liberar]{background:var(--brand-soft);border-color:var(--brand-border);color:var(--brand-text)}
+.lista-ferramentas .seg{align-self:center}
+.quadro{display:grid;grid-template-columns:repeat(var(--colunas,4),minmax(220px,1fr));gap:12px;overflow-x:auto;margin:0 -20px -20px;padding:16px 20px 20px;border-top:1px solid var(--border);background:var(--surface-2)}
+.quadro-vazio{grid-column:1/-1;text-align:center;color:var(--text-2);padding:24px}
+.coluna{display:flex;flex-direction:column;gap:8px;min-width:0}
+.coluna header{display:flex;align-items:center;gap:8px;padding:4px 2px 6px;font-size:13px;font-weight:600;border-bottom:2px solid var(--border-strong)}
+.coluna header small{font-weight:500;color:var(--text-3)}
+.coluna.c-pendente header{border-bottom-color:var(--brand)}
+.coluna.c-ajuste header{border-bottom-color:var(--warning)}
+.coluna.c-aprovado header{border-bottom-color:var(--success)}
+.coluna-vazia{font-size:12.5px;color:var(--text-3);padding:10px 4px}
+.cartao{display:flex;gap:10px;padding:10px;background:var(--surface);border:1px solid var(--border);border-radius:var(--r-lg);box-shadow:var(--shadow-xs);cursor:pointer;transition:border-color .15s}
+.cartao:hover,.cartao:focus-visible{border-color:var(--border-strong)}
+.cartao>img,.cartao>.sem-capa{width:48px;flex:none;aspect-ratio:3/4;object-fit:cover;border-radius:var(--r-sm);border:1px solid var(--border)}
+.cartao>div{display:flex;flex-direction:column;gap:3px;min-width:0;flex:1}
+.cartao b{font-size:13px;font-weight:600;line-height:18px;overflow:hidden;text-overflow:ellipsis;display:-webkit-box;-webkit-line-clamp:2;line-clamp:2;-webkit-box-orient:vertical}
+.cartao small{font-size:12px;color:var(--text-2)}
+.cartao-pe{display:flex;align-items:center;gap:6px;margin-top:auto;padding-top:4px}
+.cartao-pe .av{width:22px;height:22px;font-size:9.5px;border:0}
+.cartao-pe button{margin-left:auto;min-height:24px;padding:0 8px;border-radius:var(--r-sm);font-size:11.5px;font-weight:500;border:1px solid var(--success-border);background:var(--success-soft);color:var(--success)}
+.cartao-pe button[data-liberar]{border-color:var(--brand-border);background:var(--brand-soft);color:var(--brand-text)}
+
 /* ================= CELULAR =================
    Fica no fim do arquivo para valer sobre as regras de cima. CSS novo entra antes daqui. */
 @media (max-width:640px){
@@ -594,4 +728,16 @@ body[data-tema="escuro"] .txtad b{color:#8ab4f8}
   .aj{flex-wrap:wrap}
   .aj-info{flex-basis:100%}
   .aj-linha select{flex:1 1 100%}
+  .geral-barra{flex-direction:column;align-items:stretch}
+  .geral-barra .seg{align-self:stretch}
+  .geral-barra .seg button{flex:1}
+  #geralMes{width:100%}
+  .kpis{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .cli-grid{grid-template-columns:1fr}
+  .entrega{flex-basis:200px}
+  .avisos{left:16px;right:16px;bottom:16px;align-items:stretch}
+  .toast{max-width:none}
+  .lista-ferramentas .seg{flex:1}
+  .lista-ferramentas .seg button{flex:1}
+  #btnNovoPost{flex:1 1 100%}
 }

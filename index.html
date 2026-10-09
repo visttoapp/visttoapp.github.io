@@ -9,9 +9,9 @@
 <link rel="icon" href="assets/vistto.svg" type="image/svg+xml">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Cormorant+Garamond:wght@500&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/style.css?v=20261009a"><link rel="stylesheet" href="css/agencies.css?v=20261009a">
+<link rel="stylesheet" href="css/style.css?v=20261009b"><link rel="stylesheet" href="css/agencies.css?v=20261009b">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="js/config.js?v=20261009a"></script>
+<script src="js/config.js?v=20261009b"></script>
 </head>
 <body class="admin" data-tema="neutro"><script>if (new URLSearchParams(location.search).has("t") || new URLSearchParams(location.hash.slice(1)).has("t")) location.replace("c" + location.search + location.hash);</script>
 
@@ -57,6 +57,10 @@
     </div>
 
     <div class="side-section">
+      <button class="nav-item" id="btnGeral"><svg class="i" viewBox="0 0 16 16"><rect x="2" y="2" width="5" height="5" rx="1.2"/><rect x="9" y="2" width="5" height="5" rx="1.2"/><rect x="2" y="9" width="5" height="5" rx="1.2"/><rect x="9" y="9" width="5" height="5" rx="1.2"/></svg>Visão geral</button>
+    </div>
+
+    <div class="side-section">
       <div class="row"><label for="selCliente" class="label">Cliente</label><button class="add" id="btnNovoCliente" hidden><svg class="i" viewBox="0 0 16 16"><path d="M8 3v10M3 8h10"/></svg>Novo</button></div>
       <select id="selCliente"></select>
     </div>
@@ -99,6 +103,33 @@
           <button class="btn" id="btnEditarCliente" hidden><svg class="i" viewBox="0 0 16 16"><path d="M11 2.5l2.5 2.5L5.5 13H3v-2.5z"/></svg>Editar cliente</button>
         </div>
       </div>
+
+      <!-- VISÃO GERAL DA AGÊNCIA -->
+      <section id="geral" hidden>
+        <div class="geral-barra">
+          <div class="seg" role="tablist" aria-label="O que ver" id="geralAbas">
+            <button role="tab" data-aba="clientes" class="on">Clientes</button>
+            <button role="tab" data-aba="pauta">Pauta da semana</button>
+            <button role="tab" data-aba="aprovacao">Aprovação</button>
+          </div>
+          <select id="geralMes" aria-label="Mês"></select>
+        </div>
+        <div class="kpis" id="geralKpis"></div>
+        <div id="geralClientes" class="cli-grid"></div>
+        <div class="card" id="geralPauta" hidden>
+          <div class="card-head"><div><h4>Pauta da semana</h4><p id="pautaPeriodo">Os posts de cada pessoa, pelo dia previsto.</p></div>
+            <div class="lista-ferramentas"><button class="btn sm" id="pautaAntes" aria-label="Semana anterior">‹</button><button class="btn sm" id="pautaHoje">Esta semana</button><button class="btn sm" id="pautaDepois" aria-label="Próxima semana">›</button></div></div>
+          <div class="pauta-wrap"><div class="pauta" id="pautaGrade"></div></div>
+        </div>
+        <div class="card" id="geralAprovacao" hidden>
+          <div class="card-head"><div><h4>Como cada cliente aprova</h4><p>Últimos 3 meses. Espera é o tempo típico entre o post ficar disponível e a resposta do cliente.</p></div></div>
+          <div class="table-wrap"><table class="tabela-aprovacao"><thead><tr><th>Cliente</th><th>Posts com retorno</th><th>Espera típica</th><th>Ajustes por post</th><th>Aprovados de primeira</th></tr></thead><tbody id="aprovacaoLista"></tbody></table></div>
+        </div>
+        <div class="msg" id="msgGeral" role="status"></div>
+      </section>
+
+      <!-- ENTREGAS DO CLIENTE -->
+      <div class="entregas" id="entregas" hidden></div>
 
       <!-- SENHA -->
       <div class="card" id="cardSenha" hidden>
@@ -225,14 +256,16 @@
       </div>
 
       <!-- POST -->
-      <div class="card" id="cardPost">
-        <div class="card-head"><div><h4 id="postFormTitle">Novo post</h4><p id="postFormHint">Envie as lâminas na ordem do carrossel. Para reel, envie o .mp4 e uma imagem de capa.</p></div></div>
+      <div class="card" id="cardPost" hidden>
+        <div class="card-head"><div><h4 id="postFormTitle">Novo post</h4><p id="postFormHint">Envie as lâminas na ordem do carrossel. Para reel, envie o .mp4 e uma imagem de capa.</p></div><button class="btn sm" id="btnFecharPost">Fechar</button></div>
         <div class="form-grid">
           <div class="field"><label class="label" for="pNumero" id="lblNumero">Número</label><input id="pNumero" placeholder="01"></div>
           <div class="field"><label class="label" for="pData" id="lblData">Data prevista</label><input id="pData" placeholder="09/10"></div>
           <div class="field" id="fldTema"><label class="label" for="pTema">Tema</label><input id="pTema" placeholder="Design · confiança"></div>
           <div class="field" id="fldConjunto" hidden><label class="label" for="pConjunto" id="lblConjunto">Conjunto de anúncios</label><input id="pConjunto" maxlength="80" placeholder="Remarketing 30 dias"></div>
           <div class="field"><label class="label" for="pTipo">Formato</label><select id="pTipo"></select></div>
+          <div class="field" id="fldResponsavel" hidden><label class="label" for="pResponsavel">Responsável</label><select id="pResponsavel"></select></div>
+          <div class="field" id="fldInterno" hidden><label class="label" for="pInterno">Onde está</label><select id="pInterno"><option value="">No link do cliente</option><option value="revisao">Em revisão interna (o cliente ainda não vê)</option><option value="reserva">Na gaveta (fora do link)</option></select></div>
           <div class="field full" id="fldPublico" hidden><label class="label" for="pPublico" id="lblPublico">Público</label><input id="pPublico" maxlength="300" placeholder="Mulheres 25-45, raio de 10 km, interesse em confeitaria"></div>
           <div class="field full"><label class="label" for="pTitulo" id="lblTitulo">Título <span class="hint">(use &lt;em&gt;palavra&lt;/em&gt; para destacar)</span></label><input id="pTitulo" placeholder="Título do post"></div>
           <div class="field full"><label class="label" for="pLegenda" id="lblLegenda">Legenda</label><textarea id="pLegenda" rows="5" placeholder="Legenda completa"></textarea></div>
@@ -244,20 +277,24 @@
         <input type="file" id="file" multiple accept="image/*,video/mp4" hidden>
         <div class="actions">
           <button class="btn primary" id="btnSalvarPost">Salvar post</button>
-          <button class="btn ghost" id="btnLimpar">Limpar</button>
+          <button class="btn ghost" id="btnLimpar">Cancelar</button>
+          <button class="btn ghost perigo-texto" id="btnExcluirPost" hidden>Excluir post</button>
         </div>
         <div class="msg" id="msgPost"></div>
       </div>
 
       <!-- LISTA -->
       <div class="card lista-card">
-        <div class="card-head"><div><h4 id="listaTitle">Posts do mês</h4><p>Retornos do cliente aparecem aqui. Use <b>Atualizar</b> para ver as novidades.</p></div>
+        <div class="card-head"><div><h4 id="listaTitle">Posts do mês</h4><p>Os retornos do cliente atualizam sozinhos quando você volta para esta aba.</p></div>
           <div class="lista-ferramentas">
-            <select id="filterStatus" aria-label="Filtrar posts"><option value="">Todos os status</option><option value="pendente">Aguardando</option><option value="ajuste">Ajustes solicitados</option><option value="aprovado">Aprovados</option></select>
+            <button class="btn primary sm" id="btnNovoPost" hidden><svg class="i" viewBox="0 0 16 16"><path d="M8 3v10M3 8h10"/></svg><span id="txtNovoPost">Novo post</span></button>
+            <div class="seg" role="group" aria-label="Como ver"><button type="button" data-vista="lista" class="on">Lista</button><button type="button" data-vista="quadro">Quadro</button></div>
+            <select id="filterStatus" aria-label="Filtrar posts"><option value="">Todos os status</option><option value="pendente">Aguardando</option><option value="ajuste">Ajustes solicitados</option><option value="aprovado">Aprovados</option><option value="revisao" data-pauta hidden>Em revisão interna</option><option value="reserva" data-pauta hidden>Na gaveta</option></select>
             <button class="btn sm" id="btnRefresh" title="Buscar retornos novos do cliente"><svg class="i" viewBox="0 0 16 16"><path d="M13.5 8a5.5 5.5 0 1 1-1.6-3.9M13.5 2.5v3h-3"/></svg>Atualizar</button>
           </div>
         </div>
-        <div class="table-wrap">
+        <div class="quadro" id="quadro" hidden></div>
+        <div class="table-wrap" id="tabelaPosts">
           <table><thead><tr><th></th><th>#</th><th id="colTema">Tema</th><th>Formato</th><th>Status</th><th>Retorno do cliente</th><th>Ações</th></tr></thead>
           <tbody id="lista"></tbody></table>
         </div>
@@ -266,6 +303,6 @@
   </main>
 </div>
 
-<script src="js/brand.js?v=20261009a"></script><script src="js/media.js?v=20261009a"></script><script src="js/importar.js?v=20261009a"></script><script src="js/admin.js?v=20261009a"></script>
+<script src="js/ui.js?v=20261009b"></script><script src="js/painel.js?v=20261009b"></script><script src="js/brand.js?v=20261009b"></script><script src="js/media.js?v=20261009b"></script><script src="js/importar.js?v=20261009b"></script><script src="js/admin.js?v=20261009b"></script>
 </body>
 </html>
