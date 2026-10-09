@@ -9,9 +9,9 @@
 <link rel="icon" href="assets/vistto.svg" type="image/svg+xml">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Cormorant+Garamond:wght@500&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/style.css?v=20261009b"><link rel="stylesheet" href="css/agencies.css?v=20261009b">
+<link rel="stylesheet" href="css/style.css?v=20261009c"><link rel="stylesheet" href="css/agencies.css?v=20261009c">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="js/config.js?v=20261009b"></script>
+<script src="js/config.js?v=20261009c"></script>
 </head>
 <body class="admin" data-tema="neutro"><script>if (new URLSearchParams(location.search).has("t") || new URLSearchParams(location.hash.slice(1)).has("t")) location.replace("c" + location.search + location.hash);</script>
 
@@ -168,7 +168,7 @@
         <div class="card-head"><div><h4>Dados do cliente</h4><p>Como o perfil vai aparecer na prévia do feed.</p></div></div>
         <div class="form-grid">
           <div class="field"><label class="label" for="cNome">Nome do cliente</label><input id="cNome" placeholder="Ex.: Padaria Aurora"></div>
-          <div class="field"><label class="label" for="cSlug">Identificador</label><input id="cSlug" placeholder="padaria-aurora"></div>
+          <div class="field"><label class="label" for="cSlug">Identificador <span class="hint">(aparece no link do cliente)</span></label><input id="cSlug" placeholder="padaria-aurora"></div>
           <div class="field"><label class="label" for="cHandle">Instagram</label><input id="cHandle" placeholder="@perfil"></div>
           <div class="field"><label class="label" for="cSquad">Squad</label><select id="cSquad"></select></div>
           <div class="field full"><label class="label" for="cBio">Bio</label><textarea id="cBio" rows="2" placeholder="Texto que aparece abaixo do nome"></textarea></div>
@@ -294,6 +294,6 @@
   </main>
 </div>
 
-<script src="js/ui.js?v=20261009b"></script><script src="js/painel.js?v=20261009b"></script><script src="js/brand.js?v=20261009b"></script><script src="js/media.js?v=20261009b"></script><script src="js/importar.js?v=20261009b"></script><script src="js/admin.js?v=20261009b"></script>
+<script src="js/link.js?v=20261009c"></script><script src="js/ui.js?v=20261009c"></script><script src="js/painel.js?v=20261009c"></script><script src="js/brand.js?v=20261009c"></script><script src="js/media.js?v=20261009c"></script><script src="js/importar.js?v=20261009c"></script><script src="js/admin.js?v=20261009c"></script>
 </body>
 </html>

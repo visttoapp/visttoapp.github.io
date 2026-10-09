@@ -114,4 +114,25 @@ assert.equal((await customer(req({token:'a'.repeat(24),entrega:'nao-e-uuid'}))).
  await c2(req({token:'a'.repeat(24)}));
  assert.equal(visto.p_canal,null);assert.equal(visto.p_entrega,null);checks++;
 }
+// link curto: identificador + código viram o token no servidor, e o token volta para a página responder
+{
+ const pedidos=[];
+ const c3=load('cliente',{rpc:async(n,a)=>{pedidos.push([n,a]);
+   if(n==='resolver_link')return {data:a.p_slug==='prime-plus'&&a.p_codigo==='k7f3q2m9'?'c'.repeat(64):null};
+   return {data:a.p_token==='c'.repeat(64)?{cliente:{nome:'Prime',avatar_url:null},posts:[],destaques:[]}:null};},
+   storage:{from:()=>({createSignedUrl:async()=>({data:{signedUrl:'x'}})})}});
+ const ok=await (await c3(req({curto:{cliente:'prime-plus',codigo:'k7f3q2m9'},mes:'2026-10',canal:'linkedin'}))).json();
+ assert.equal(ok.token,'c'.repeat(64));checks++;
+ assert.deepEqual(pedidos.map(x=>x[0]),['resolver_link','get_mes']);assert.equal(pedidos[1][1].p_canal,'linkedin');assert.equal(pedidos[1][1].p_ano_mes,'2026-10');checks++;
+ pedidos.length=0;
+ assert.equal(await (await c3(req({curto:{cliente:'prime-plus',codigo:'errado22'}}))).json(),null);assert.deepEqual(pedidos.map(x=>x[0]),['resolver_link']);checks++;
+ pedidos.length=0;
+ for(const ruim of [{cliente:'Prime Plus',codigo:'k7f3q2m9'},{cliente:'prime-plus',codigo:'k7f3q2m0'},{cliente:'prime-plus'},'prime-plus/k7f3q2m9',{cliente:'x'.repeat(81),codigo:'k7f3q2m9'}]){
+   assert.equal(await (await c3(req({curto:ruim}))).json(),null);
+ }
+ assert.equal(pedidos.length,0);checks++;   // formato errado nem chega no banco
+ const antigo=await (await c3(req({token:'c'.repeat(64)}))).json();
+ assert.equal(antigo.token,undefined);checks++;   // pelo link antigo o token não volta (a página já tem)
+}
+
 console.log('PASS:',checks,'server function authorization and media checks.');

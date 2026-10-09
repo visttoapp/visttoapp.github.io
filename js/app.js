@@ -17,9 +17,10 @@
   const STATUS = { pendente: 'Aguardando', aprovado: 'Aprovado', ajuste: 'Ajuste solicitado' };
   const CANAL = { instagram: 'Instagram', linkedin: 'LinkedIn' };
 
-  const params = new URLSearchParams(location.hash.slice(1) || location.search);
-  if(location.search.includes('t=')) history.replaceState(null,'',location.pathname+'#'+params.toString());
-  const token = params.get('t') || '';
+  // link antigo (#t=...) ou curto (#prime-plus/k7f3q2m9/outubro-2026); ?t= vira # para o token não ir ao servidor
+  if (location.search.includes('t=')) history.replaceState(null, '', location.pathname + '#' + new URLSearchParams(location.search).toString());
+  const chave = LINK.ler(location.hash);
+  let token = (chave && chave.token) || '';   // no link curto, o token chega na resposta e serve para responder
   let agency = { name: 'Vistto' };
 
   $('agencyLogo').textContent=agency.name;
@@ -28,15 +29,18 @@
   const cover = p => p.capa_url || (p.slides && p.slides[0]) || '';
 
   async function load(alvo) {
-    try { data = await window.API.carregar(token, alvo); }
+    try { data = await window.API.carregar(chave, alvo); }
     catch (e) { return fail('Não foi possível carregar. ' + (e.message || '')); }
     if (!data) return fail('Link inválido ou expirado. Peça um novo link para a agência.');
+    if (data.token) token = data.token;
     agency.name=data.agencia?.nome || 'Vistto'; BRAND.apply(data.agencia);
     canal = data.canal === 'linkedin' ? 'linkedin' : 'instagram'; li = canal === 'linkedin';
     document.body.dataset.canal = canal;
     abas();
     if (!data.mes) return fail(`Ainda não há conteúdo publicado para ${data.cliente.nome}.`);
     posts = (data.posts || []).map((p, i) => ({ ...p, idx: i, numero: pad(p.numero || i + 1) }));
+    // no link curto, a barra de endereço acompanha o mês aberto
+    if (chave && chave.codigo) history.replaceState(null, '', '#' + [chave.cliente, chave.codigo, LINK.mesParaTexto(data.mes.ano_mes, canal)].filter(Boolean).join('/'));
     render();
   }
   // Uma aba por canal com conteúdo publicado. Cliente só com Instagram nem vê a barra.
@@ -256,5 +260,5 @@
     if (total > 1 && e.key === 'ArrowLeft') go(idx - 1);
   });
 
-  load({ m: params.get('m'), entrega: params.get('e'), canal: params.get('k') });
+  load(chave ? { m: chave.m, entrega: chave.entrega, canal: chave.canal } : {});
 })();
