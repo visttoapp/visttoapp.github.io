@@ -9,9 +9,9 @@
 <link rel="icon" href="assets/vistto.svg" type="image/svg+xml">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Cormorant+Garamond:wght@500&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/style.css?v=20261006a"><link rel="stylesheet" href="css/agencies.css?v=20261006a">
+<link rel="stylesheet" href="css/style.css?v=20261009a"><link rel="stylesheet" href="css/agencies.css?v=20261009a">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="js/config.js?v=20261006a"></script>
+<script src="js/config.js?v=20261009a"></script>
 </head>
 <body class="admin" data-tema="neutro"><script>if (new URLSearchParams(location.search).has("t") || new URLSearchParams(location.hash.slice(1)).has("t")) location.replace("c" + location.search + location.hash);</script>
 
@@ -37,13 +37,22 @@
   <p class="loginHelp">Seu login é criado pelo responsável da sua equipe.</p>
 </div>
 
+<!-- ESCOLHA DA AGÊNCIA -->
+<div id="escolha" class="login escolha" hidden>
+  <div class="brandmark"><img src="assets/vistto.svg" alt=""><b>Vistto</b></div>
+  <h1>Em qual agência você vai entrar?</h1>
+  <p class="loginIntro">Dá pra trocar depois pela barra lateral.</p>
+  <div id="escolhaLista" class="escolha-lista"></div>
+  <button class="btn text" id="btnSairEscolha">Sair</button>
+</div>
+
 <!-- APP -->
 <div id="app" class="app" hidden>
   <aside class="sidebar">
     <div class="agency"><div><div class="logo" id="agencyLogo"></div><span class="label">Painel de aprovação</span></div></div>
 
     <div class="side-section" id="boxAgencia" hidden>
-      <label for="selAgencia" class="label">Agência</label>
+      <div class="row"><label for="selAgencia" class="label">Agência</label><button class="add" id="btnTrocarAgencia">Trocar</button></div>
       <select id="selAgencia"></select>
     </div>
 
@@ -257,6 +266,6 @@
   </main>
 </div>
 
-<script src="js/brand.js?v=20261006a"></script><script src="js/media.js?v=20261006a"></script><script src="js/importar.js?v=20261006a"></script><script src="js/admin.js?v=20261006a"></script>
+<script src="js/brand.js?v=20261009a"></script><script src="js/media.js?v=20261009a"></script><script src="js/importar.js?v=20261009a"></script><script src="js/admin.js?v=20261009a"></script>
 </body>
 </html>

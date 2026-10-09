@@ -588,3 +588,11 @@ body[data-tema="escuro"] .txtad b{color:#8ab4f8}
   .aj-info{flex-basis:100%}
   .aj-linha select{flex:1 1 100%}
 }
+
+/* escolha da agência, logo depois do login */
+.escolha-lista{display:flex;flex-direction:column;gap:8px}
+.escolha-item{display:flex;align-items:center;justify-content:space-between;gap:12px;width:100%;padding:14px 16px;border:1px solid var(--border);border-radius:var(--r);background:var(--surface);color:var(--text);font:inherit;text-align:left;cursor:pointer;transition:border-color .15s,background .15s}
+.escolha-item:hover,.escolha-item:focus-visible{border-color:var(--text-2);background:var(--surface-2)}
+.escolha-item b{display:block;font-weight:600}
+.escolha-item small{color:var(--text-2);font-size:12.5px}
+.escolha-tag{flex:none;padding:2px 8px;border-radius:999px;background:var(--surface-2)}

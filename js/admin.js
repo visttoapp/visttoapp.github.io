@@ -118,9 +118,10 @@
       if(!agencias.length){await sb.auth.signOut();$('login').hidden=false;$('app').hidden=true;$('loginMsg').textContent='Seu acesso ainda não foi liberado. Fale com o responsável da sua equipe.';return;}
       $('selAgencia').innerHTML=agencias.map(g=>`<option value="${g.id}">${esc(g.nome)}</option>`).join('');
       $('boxAgencia').hidden=agencias.length<2;
-      $('login').hidden=true;$('app').hidden=false;
+      $('login').hidden=true;
       history.replaceState(null,'','./');
-      await selectAgencia(agencias[0].id);
+      // Com mais de uma agência, a pessoa escolhe em qual entra antes de carregar qualquer cliente.
+      if(agencias.length>1) escolherAgencia(); else await entrarAgencia(agencias[0].id);
       const { data: { user } } = await sb.auth.getUser();
       obrigatorio = !!user?.user_metadata?.trocar_senha;
       document.body.classList.toggle('trocar-senha', obrigatorio);
@@ -128,9 +129,28 @@
     }catch(e){$('app').hidden=true;$('login').hidden=false;$('loginMsg').textContent='Não foi possível abrir o painel: '+e.message;}
   }
 
+  function escolherAgencia() {
+    const ultima = localStorage.getItem('adm_agencia');
+    $('escolhaLista').innerHTML = agencias.map(g => `<button class="escolha-item" data-agencia="${g.id}">
+      <span><b>${esc(g.nome)}</b><small>${esc(superadmin ? 'Administrador geral' : (PAPEIS[g.papel] || ''))}</small></span>
+      ${g.id === ultima ? '<small class="escolha-tag">última usada</small>' : ''}</button>`).join('');
+    $('escolhaLista').querySelectorAll('[data-agencia]').forEach(b => b.onclick = () => entrarAgencia(b.dataset.agencia));
+    $('app').hidden = true; $('escolha').hidden = false;
+  }
+  async function entrarAgencia(id) {
+    $('escolha').hidden = true; $('app').hidden = false;
+    $('selAgencia').value = id;
+    try { localStorage.setItem('adm_agencia', id); } catch (e) {}
+    await selectAgencia(id);
+  }
+  $('btnTrocarAgencia').onclick = escolherAgencia;
+  $('btnSairEscolha').onclick = () => $('btnLogout').click();
+
   async function selectAgencia(id) {
     agencia=agencias.find(g=>g.id===id); BRAND.apply(agencia);
     nivel=agencia.nivel||0;
+    // clientes e squads saem juntos, em vez de um esperar o outro
+    const pClientes=sb.from('clientes').select(COLS).eq('agencia_id', agencia.id).order('nome');
     $('meuPapel').textContent=superadmin?'Administrador geral':(PAPEIS[agencia.papel]||'');
     squads=await run(sb.rpc('listar_squads',{p_agencia:agencia.id}));
     const squadOpts=squads.map(q=>`<option value="${q.id}">${esc(q.nome)}</option>`).join('');
@@ -149,10 +169,12 @@
     $('accessPapel').innerHTML=Object.entries(PAPEIS).filter(([k])=>NIVEL[k]<nivel).map(([k,v])=>`<option value="${k}">${v}</option>`).join('');
     $('accessPapel').value=nivel>=3?'head':'designer';
     $('cardCliente').hidden=true; $('cardMes').hidden=true; $('accessCard').hidden=true; $('cardEspaco').hidden=true; document.body.classList.remove('vendo-equipe','vendo-espaco'); $('btnAccess').classList.remove('active'); $('cardSenha').hidden=!(recuperando||obrigatorio);
-    await loadClientes();
-    medirEspaco();
+    await loadClientes(pClientes);
+    // o espaço é do servidor inteiro, não da agência: mede uma vez por sessão
+    if(!espacoMedido){espacoMedido=true;medirEspaco();}
   }
-  $('selAgencia').onchange=e=>selectAgencia(e.target.value);
+  let espacoMedido=false;
+  $('selAgencia').onchange=e=>{try{localStorage.setItem('adm_agencia',e.target.value);}catch(x){}selectAgencia(e.target.value);};
   $('btnRefresh').onclick=()=>selectMes(mes?.id);
   $('filterStatus').onchange=renderLista;
   async function accessList() {
@@ -265,8 +287,8 @@
     }catch(e){$('accessMsg').textContent=e.message;}finally{btn.disabled=false;}
   };
   $('btnRotate').onclick=async()=>{if(!cliente||nivel<2||!confirm('O link anterior deixará de funcionar. Gerar outro?'))return;cliente.token=await run(sb.rpc('renovar_link',{p_cliente:cliente.id}));renderTop();};
-  async function loadClientes() {
-    const { data, error } = await sb.from('clientes').select(COLS).eq('agencia_id', agencia.id).order('nome');
+  async function loadClientes(pronto) {
+    const { data, error } = await (pronto || sb.from('clientes').select(COLS).eq('agencia_id', agencia.id).order('nome'));
     if (error) return alert(error.message);
     clientes = data;
     const opt = c => `<option value="${c.id}">${esc(c.nome)}</option>`;
@@ -286,8 +308,13 @@
     localStorage.setItem('adm_cliente_' + agencia.id, id || '');
     meses = []; mes = null; posts=[]; limparPost();
     if (!cliente) { $('selMes').innerHTML = ''; renderTop(); renderLista(); return; }
-    if (nivel >= 2 && !cliente.token) cliente.token = await run(sb.rpc('link_cliente', { p_cliente: cliente.id }));
-    const data = await run(sb.from('meses').select('*').eq('cliente_id', cliente.id).order('ano_mes', { ascending: false }).order('created_at', { ascending: false }));
+    const c = cliente;
+    const [data, token] = await Promise.all([
+      run(sb.from('meses').select('*').eq('cliente_id', c.id).order('ano_mes', { ascending: false }).order('created_at', { ascending: false })),
+      nivel >= 2 && !c.token ? run(sb.rpc('link_cliente', { p_cliente: c.id })) : null
+    ]);
+    if (token) c.token = token;
+    if (cliente !== c) return;   // trocaram de cliente enquanto carregava
     todosMeses = data || [];
     await aplicarCanal();
   }
@@ -335,9 +362,15 @@
     mes = meses.find(m => m.id === id) || null;
     posts = [];
     if (mes) {
-      const data = await run(sb.from('posts').select('*, aprovacoes(*)').eq('mes_id', mes.id).order('ordem'));
-      await MEDIA.prepare(sb, data);
+      const m = mes;
+      const data = await run(sb.from('posts').select('*, aprovacoes(*)').eq('mes_id', m.id).order('ordem'));
+      if (mes !== m) return;   // trocaram de mês enquanto carregava
       posts = (data || []).map(p => ({ ...p, aprovacoes: (p.aprovacoes || []).sort((a, b) => a.created_at.localeCompare(b.created_at)) }));
+      // a lista aparece já com os textos; as miniaturas chegam em seguida
+      renderTop(); renderLista(); limparPost();
+      try { await MEDIA.prepare(sb, data); } catch (e) { console.warn(e); }
+      if (mes === m) renderLista();
+      return;
     }
     renderTop(); renderLista(); limparPost();
   }
@@ -1094,7 +1127,7 @@
       const cover = p.capa_url || (p.slides && p.slides[0]) || '';
       const ret = p.aprovacoes;
       return `<tr>
-        <td>${cover ? `<img src="${esc(MEDIA.url(cover))}">` : ''}</td>
+        <td>${cover && MEDIA.url(cover) ? `<img src="${esc(MEDIA.url(cover))}">` : ''}</td>
         <td>${esc(p.numero)}<br><small style="color:var(--mute)">${esc(p.data || '')}</small></td>
         <td>${esc(canal === 'instagram' ? p.tema : (p.titulo || '').replace(/<[^>]+>/g, ''))}<br><small style="color:var(--mute)">${esc(canal === 'instagram' ? (p.titulo || '').replace(/<[^>]+>/g, '').slice(0, 60) : (p.conjunto || 'sem conjunto'))}</small></td>
         <td>${TIPO[p.tipo]}${p.slides && p.slides.length > 1 ? ` · ${p.slides.length}` : ''}</td>
