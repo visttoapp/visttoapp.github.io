@@ -1519,7 +1519,7 @@ grant execute on function public.get_mes(text,text,text,uuid) to service_role;
 
 commit;
 
--- ---------- link curto do cliente (supabase/link-curto.sql) ----------
+-- ---------- link curto do cliente (supabase/historico/link-curto.sql) ----------
 -- Vistto · link curto do cliente: visttoapp.github.io/c#prime-plus/k7f3q2m9/outubro-2026
 -- Rode uma vez no SQL Editor do Supabase (pode rodar de novo, não estraga nada).
 --  · clientes.codigo: 8 letras que, junto com o identificador do cliente (slug), abrem o link. Só Head+ vê.
