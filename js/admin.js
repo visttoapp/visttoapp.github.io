@@ -6,16 +6,9 @@
   const STATUS = { pendente: 'Aguardando', aprovado: 'Aprovado', ajuste: 'Ajuste' };
   const TIPO = { carousel: 'Carrossel', image: 'Imagem', reel: 'Reel', texto: 'Texto' };
   const TIPO_FEED = { carousel: 'Carrossel', image: 'Imagem única', reel: 'Reel (vídeo)' };
-  const TIPO_ADS = { image: 'Imagem única', carousel: 'Carrossel', reel: 'Vídeo', texto: 'Só texto (pesquisa)' };
-  const CANAIS = { instagram: 'Instagram · feed', meta: 'Meta Ads', google: 'Google Ads' };
-  const OBJETIVOS = {
-    meta: ['Reconhecimento', 'Tráfego', 'Engajamento', 'Cadastros', 'Mensagens', 'Vendas', 'Promoção de app'],
-    google: ['Pesquisa', 'Performance Max', 'Display', 'Demand Gen', 'Vídeo (YouTube)', 'Shopping']
-  };
-  const CTAS = {
-    meta: ['Saiba mais', 'Comprar agora', 'Cadastre-se', 'Enviar mensagem', 'Chamar no WhatsApp', 'Reservar', 'Baixar', 'Ver cardápio'],
-    google: ['Saiba mais', 'Comprar agora', 'Peça um orçamento', 'Ligar agora', 'Inscreva-se', 'Baixar']
-  };
+  const TIPO_LINKEDIN = { image: 'Imagem', carousel: 'Carrossel (várias imagens)', reel: 'Vídeo' };
+  // Canais de posts. Meta Ads e Google Ads saíram: as campanhas antigas ficam no banco, fora do painel.
+  const CANAIS = { instagram: 'Instagram', linkedin: 'LinkedIn' };
   const PAPEIS = { dono: 'Dono', socio: 'Sócio', head: 'Head', designer: 'Designer', editor_video: 'Editor de vídeo', social_media: 'Social media', gestor_trafego: 'Gestor de tráfego' };
   const NIVEL = { dono: 3, socio: 3, head: 2, designer: 1, editor_video: 1, social_media: 1, gestor_trafego: 1 };
   const COLS = 'id,agencia_id,squad_id,slug,nome,handle,bio,avatar_url,created_at';
@@ -34,7 +27,8 @@
   sb.auth.onAuthStateChange(evento => { if (evento === 'PASSWORD_RECOVERY') { recuperando = true; abrirSenha(); } });
 
   const run = async q => { const r = await q; if(r.error) throw r.error; return r.data; };
-  window.addEventListener('unhandledrejection', e => { e.preventDefault(); alert('Não foi possível concluir: ' + (e.reason?.message || 'tente novamente.')); });
+  const { aviso, confirmar } = UI;
+  window.addEventListener('unhandledrejection', e => { e.preventDefault(); aviso('Não foi possível concluir: ' + (e.reason?.message || 'tente novamente.'), 'erro'); });
   /* ---------- auth ---------- */
   $('btnLogin').onclick = async () => {
     $('loginMsg').textContent = 'Entrando…'; $('loginMsg').className = 'msg';
@@ -106,10 +100,16 @@
   /* ---------- estado ---------- */
   let agencias = [], agencia = null, superadmin = false, nivel = 0, squads = [];
   let clientes = [], meses = [], todosMeses = [], posts = [], cliente = null, mes = null;
-  let canal = 'instagram', podeAds = false;
+  let canal = 'instagram';
   let files = [];          // arquivos do post em edição [{file, url, kind}]
   let editing = null;      // post em edição (id) ou null
   let destFiles = [];      // {nome, url}
+  let temPauta = null;     // o banco já tem responsável, revisão interna e gaveta (supabase/pauta.sql)?
+  let membros = [];        // equipe da agência, para escolher o responsável
+  let contagens = new Map();   // mes_id → quantos posts em cada etapa, para as entregas
+  let mesPreferido = null; // mês a abrir quando o cliente carregar (vindo da visão geral)
+  let vendoGeral = false, geral = null, semanaPauta = null, ultimaBusca = 0;
+  let vista = (() => { try { return localStorage.getItem('adm_vista') || 'lista'; } catch (e) { return 'lista'; } })();
 
   async function start() {
     try {
@@ -118,9 +118,10 @@
       if(!agencias.length){await sb.auth.signOut();$('login').hidden=false;$('app').hidden=true;$('loginMsg').textContent='Seu acesso ainda não foi liberado. Fale com o responsável da sua equipe.';return;}
       $('selAgencia').innerHTML=agencias.map(g=>`<option value="${g.id}">${esc(g.nome)}</option>`).join('');
       $('boxAgencia').hidden=agencias.length<2;
-      $('login').hidden=true;$('app').hidden=false;
+      $('login').hidden=true;
       history.replaceState(null,'','./');
-      await selectAgencia(agencias[0].id);
+      // Com mais de uma agência, a pessoa escolhe em qual entra antes de carregar qualquer cliente.
+      if(agencias.length>1) escolherAgencia(); else await entrarAgencia(agencias[0].id);
       const { data: { user } } = await sb.auth.getUser();
       obrigatorio = !!user?.user_metadata?.trocar_senha;
       document.body.classList.toggle('trocar-senha', obrigatorio);
@@ -128,18 +129,38 @@
     }catch(e){$('app').hidden=true;$('login').hidden=false;$('loginMsg').textContent='Não foi possível abrir o painel: '+e.message;}
   }
 
+  function escolherAgencia() {
+    const ultima = localStorage.getItem('adm_agencia');
+    $('escolhaLista').innerHTML = agencias.map(g => `<button class="escolha-item" data-agencia="${g.id}">
+      <span><b>${esc(g.nome)}</b><small>${esc(superadmin ? 'Administrador geral' : (PAPEIS[g.papel] || ''))}</small></span>
+      ${g.id === ultima ? '<small class="escolha-tag">última usada</small>' : ''}</button>`).join('');
+    $('escolhaLista').querySelectorAll('[data-agencia]').forEach(b => b.onclick = () => entrarAgencia(b.dataset.agencia));
+    $('app').hidden = true; $('escolha').hidden = false;
+  }
+  async function entrarAgencia(id) {
+    $('escolha').hidden = true; $('app').hidden = false;
+    $('selAgencia').value = id;
+    try { localStorage.setItem('adm_agencia', id); } catch (e) {}
+    await selectAgencia(id);
+  }
+  $('btnTrocarAgencia').onclick = escolherAgencia;
+  $('btnSairEscolha').onclick = () => $('btnLogout').click();
+
   async function selectAgencia(id) {
     agencia=agencias.find(g=>g.id===id); BRAND.apply(agencia);
     nivel=agencia.nivel||0;
+    // clientes, squads, equipe e a checagem da pauta saem juntos, em vez de um esperar o outro
+    const pClientes=sb.from('clientes').select(COLS).eq('agencia_id', agencia.id).order('nome');
+    const pPauta=temPauta===null?sb.from('posts').select('interno').limit(1):null;
+    const pMembros=sb.rpc('membros_agencia',{p_agencia:agencia.id});
     $('meuPapel').textContent=superadmin?'Administrador geral':(PAPEIS[agencia.papel]||'');
     squads=await run(sb.rpc('listar_squads',{p_agencia:agencia.id}));
     const squadOpts=squads.map(q=>`<option value="${q.id}">${esc(q.nome)}</option>`).join('');
     $('cSquad').innerHTML=(nivel>=3?'<option value="">Sem squad (só donos e sócios veem)</option>':'')+squadOpts;
     $('accessSquad').innerHTML=(nivel>=3?'<option value="">Sem squad</option>':'')+squadOpts;
     $('accessSquad').closest('.field').hidden=!agencia.usa_squads||(nivel<3&&!squads.length);
-    podeAds = superadmin || nivel >= 2 || agencia.papel === 'gestor_trafego';
-    if(!podeAds) canal='instagram';
-    $('boxCanal').hidden=!podeAds; $('selCanal').value=canal; rotularCanal();
+    if(!CANAIS[canal]) canal='instagram';
+    $('selCanal').value=canal; rotularCanal();
     $('btnAccess').hidden=nivel<2; $('btnEspaco').hidden=!superadmin; $('btnNovoCliente').hidden=nivel<2||(nivel<3&&agencia.usa_squads&&!squads.length); $('cardLink').hidden=nivel<2;
     const comSquads=!!agencia.usa_squads;
     $('squadsBox').hidden=nivel<3||!comSquads;
@@ -149,11 +170,19 @@
     $('accessPapel').innerHTML=Object.entries(PAPEIS).filter(([k])=>NIVEL[k]<nivel).map(([k,v])=>`<option value="${k}">${v}</option>`).join('');
     $('accessPapel').value=nivel>=3?'head':'designer';
     $('cardCliente').hidden=true; $('cardMes').hidden=true; $('accessCard').hidden=true; $('cardEspaco').hidden=true; document.body.classList.remove('vendo-equipe','vendo-espaco'); $('btnAccess').classList.remove('active'); $('cardSenha').hidden=!(recuperando||obrigatorio);
-    await loadClientes();
-    medirEspaco();
+    if(pPauta){const r=await pPauta;temPauta=!r.error;}
+    const rm=await pMembros;
+    membros=!rm.error?(rm.data||[]):nivel>=2?((await sb.rpc('listar_acessos',{p_agencia:agencia.id})).data||[]).map(m=>({usuario_id:m.usuario_id,nome:m.nome||String(m.email||'').split('@')[0],papel:m.papel})):[];
+    $('fldResponsavel').hidden=!temPauta; $('fldInterno').hidden=!temPauta;
+    document.querySelectorAll('#filterStatus [data-pauta]').forEach(o=>o.hidden=!temPauta);
+    $('pResponsavel').innerHTML='<option value="">Ninguém</option>'+membros.map(m=>`<option value="${m.usuario_id}">${esc(m.nome)}</option>`).join('');
+    await loadClientes(pClientes);
+    // o espaço é do servidor inteiro, não da agência: mede uma vez por sessão
+    if(!espacoMedido){espacoMedido=true;medirEspaco();}
   }
-  $('selAgencia').onchange=e=>selectAgencia(e.target.value);
-  $('btnRefresh').onclick=()=>selectMes(mes?.id);
+  let espacoMedido=false;
+  $('selAgencia').onchange=e=>{try{localStorage.setItem('adm_agencia',e.target.value);}catch(x){}selectAgencia(e.target.value);};
+  $('btnRefresh').onclick=()=>vendoGeral?carregarGeral():selectMes(mes?.id);
   $('filterStatus').onchange=renderLista;
   async function accessList() {
     const rows=await run(sb.rpc('listar_acessos',{p_agencia:agencia.id}));
@@ -264,82 +293,87 @@
       $('accessNome').value='';$('accessEmail').value='';$('accessMsg').textContent=instrucao(nome,email,j.codigo);await accessList();
     }catch(e){$('accessMsg').textContent=e.message;}finally{btn.disabled=false;}
   };
-  $('btnRotate').onclick=async()=>{if(!cliente||nivel<2||!confirm('O link anterior deixará de funcionar. Gerar outro?'))return;cliente.token=await run(sb.rpc('renovar_link',{p_cliente:cliente.id}));renderTop();};
-  async function loadClientes() {
-    const { data, error } = await sb.from('clientes').select(COLS).eq('agencia_id', agencia.id).order('nome');
-    if (error) return alert(error.message);
+  $('btnRotate').onclick=async()=>{if(!cliente||nivel<2||!await confirmar('O link que o cliente tem hoje deixa de funcionar. Você vai precisar mandar o novo.',{titulo:'Gerar um link novo?',ok:'Gerar link novo',perigo:true}))return;cliente.token=await run(sb.rpc('renovar_link',{p_cliente:cliente.id}));renderTop();};
+  // abrir: id do cliente para abrir em seguida (depois de salvar um). Sem ele, fica na visão geral.
+  async function loadClientes(pronto, abrir) {
+    const { data, error } = await (pronto || sb.from('clientes').select(COLS).eq('agencia_id', agencia.id).order('nome'));
+    if (error) return aviso(error.message, 'erro');
     clientes = data;
     const opt = c => `<option value="${c.id}">${esc(c.nome)}</option>`;
     const grupos = squads.map(q => ({ nome: q.nome, itens: clientes.filter(c => c.squad_id === q.id) })).filter(g => g.itens.length);
     const soltos = clientes.filter(c => !squads.some(q => q.id === c.squad_id));
     $('selCliente').innerHTML = !clientes.length ? `<option value="">${nivel >= 2 ? '— crie um cliente —' : '— nenhum cliente liberado —'}</option>`
-      : grupos.length ? grupos.map(g => `<optgroup label="${esc(g.nome)}">${g.itens.map(opt).join('')}</optgroup>`).join('') + (soltos.length ? `<optgroup label="Sem squad">${soltos.map(opt).join('')}</optgroup>` : '')
-      : clientes.map(opt).join('');
-    const saved = localStorage.getItem('adm_cliente_' + agencia.id);
-    if (saved && clientes.find(c => c.id === saved)) $('selCliente').value = saved;
-    await selectCliente($('selCliente').value);
+      : '<option value="">Escolha um cliente…</option>' + (grupos.length ? grupos.map(g => `<optgroup label="${esc(g.nome)}">${g.itens.map(opt).join('')}</optgroup>`).join('') + (soltos.length ? `<optgroup label="Sem squad">${soltos.map(opt).join('')}</optgroup>` : '')
+      : clientes.map(opt).join(''));
+    if (abrir && clientes.find(c => c.id === abrir)) { $('selCliente').value = abrir; await verGeral(false); await selectCliente(abrir); }
+    else { $('selCliente').value = ''; await verGeral(true); }
   }
-  $('selCliente').onchange = e => { verEquipe(false); fecharFerramentas(); $('cardMes').hidden = true; $('cardCliente').hidden = true; selectCliente(e.target.value); };
+  $('selCliente').onchange = async e => {
+    verEquipe(false); fecharFerramentas(); $('cardMes').hidden = true; $('cardCliente').hidden = true;
+    if (!e.target.value) return verGeral(true);
+    await verGeral(false); await selectCliente(e.target.value);
+  };
 
   async function selectCliente(id) {
     cliente = clientes.find(c => c.id === id) || null;
     localStorage.setItem('adm_cliente_' + agencia.id, id || '');
-    meses = []; mes = null; posts=[]; limparPost();
-    if (!cliente) { $('selMes').innerHTML = ''; renderTop(); renderLista(); return; }
-    if (nivel >= 2 && !cliente.token) cliente.token = await run(sb.rpc('link_cliente', { p_cliente: cliente.id }));
-    const data = await run(sb.from('meses').select('*').eq('cliente_id', cliente.id).order('ano_mes', { ascending: false }).order('created_at', { ascending: false }));
-    todosMeses = data || [];
+    meses = []; mes = null; posts=[]; fecharPost(); contagens = new Map();
+    if (!cliente) { $('selMes').innerHTML = ''; renderTop(); renderLista(); renderEntregas(); return; }
+    const c = cliente;
+    const [data, token] = await Promise.all([
+      run(sb.from('meses').select('*').eq('cliente_id', c.id).order('ano_mes', { ascending: false }).order('created_at', { ascending: false })),
+      nivel >= 2 && !c.token ? run(sb.rpc('link_cliente', { p_cliente: c.id })) : null
+    ]);
+    if (token) c.token = token;
+    if (cliente !== c) return;   // trocaram de cliente enquanto carregava
+    todosMeses = (data || []).filter(m => CANAIS[m.canal || 'instagram']);
+    // quantos posts em cada etapa, por mês: um pedido só, para as entregas
+    if (todosMeses.length) {
+      const { data: st } = await sb.from('posts').select('mes_id,status' + (temPauta ? ',interno' : '')).in('mes_id', todosMeses.map(m => m.id));
+      if (cliente !== c) return;
+      for (const p of st || []) contar(p);
+    }
     await aplicarCanal();
   }
   async function aplicarCanal() {
     rotularCanal();
     meses = todosMeses.filter(m => (m.canal || 'instagram') === canal);
     $('selMes').innerHTML = meses.map(m => `<option value="${m.id}">${esc(m.titulo)}${m.arquivado_em ? ' (arquivado)' : ''}${m.publicado ? '' : ' · rascunho'}</option>`).join('')
-      || `<option value="">— ${canal === 'instagram' ? 'crie um mês' : 'crie uma campanha'} —</option>`;
+      || '<option value="">— crie um mês —</option>';
+    if (mesPreferido && meses.some(m => m.id === mesPreferido)) $('selMes').value = mesPreferido;
+    mesPreferido = null;
     await selectMes($('selMes').value);
   }
-  // Troca a linguagem da tela inteira: mês/post no feed, campanha/anúncio nos canais de mídia paga.
+  // Feed e LinkedIn funcionam igual: mês, número, tema, legenda e artes. Muda o nome e os formatos.
   function rotularCanal() {
-    const ads = canal !== 'instagram';
     document.body.dataset.canal = canal;
-    $('lblMes').textContent = ads ? 'Campanha' : 'Mês';
-    $('eyebrow').textContent = ads ? CANAIS[canal] + ' · aprovação de criativos' : 'Aprovação de conteúdo';
-    $('listaTitle').textContent = ads ? 'Anúncios da campanha' : 'Posts do mês';
-    $('colTema').textContent = ads ? 'Anúncio' : 'Tema';
-    $('fldTema').hidden = ads;
-    ['fldConjunto', 'fldPublico', 'fldDescricao', 'fldCta', 'fldDestino'].forEach(i => $(i).hidden = !ads);
-    $('lblConjunto').textContent = canal === 'google' ? 'Grupo de anúncios' : 'Conjunto de anúncios';
-    $('lblPublico').textContent = canal === 'google' ? 'Palavras-chave ou segmentação' : 'Público';
-    $('lblNumero').textContent = ads ? 'Nº' : 'Número';
-    $('lblData').textContent = ads ? 'Início previsto' : 'Data prevista';
-    $('lblTitulo').innerHTML = ads ? 'Título do anúncio' : 'Título <span class="hint">(use &lt;em&gt;palavra&lt;/em&gt; para destacar)</span>';
-    $('lblLegenda').textContent = ads ? 'Texto principal' : 'Legenda';
-    $('postFormHint').textContent = ads
-      ? 'Um anúncio por criativo, dentro do conjunto a que ele pertence. O cliente aprova cada um pelo link.'
-      : 'Envie as lâminas na ordem do carrossel. Para reel, envie o .mp4 e uma imagem de capa.';
-    const tipos = ads ? TIPO_ADS : TIPO_FEED;
+    if (!vendoGeral) $('eyebrow').textContent = `Aprovação de conteúdo · ${CANAIS[canal]}`;
+    const tipos = canal === 'linkedin' ? TIPO_LINKEDIN : TIPO_FEED;
     const atual = $('pTipo').value;
     $('pTipo').innerHTML = Object.entries(tipos).map(([k, v]) => `<option value="${k}">${v}</option>`).join('');
     $('pTipo').value = tipos[atual] ? atual : Object.keys(tipos)[0];
-    $('mObjetivo').innerHTML = (OBJETIVOS[canal] || []).map(o => `<option value="${esc(o)}">${esc(o)}</option>`).join('');
-    $('pCta').innerHTML = '<option value="">Sem botão</option>' + (CTAS[canal] || []).map(o => `<option value="${esc(o)}">${esc(o)}</option>`).join('');
-    ajustarArquivos();
   }
-  // Anúncio de pesquisa do Google é só texto: some a área de arquivos.
-  function ajustarArquivos() { $('fldArquivos').hidden = $('pTipo').value === 'texto'; }
-  $('pTipo').onchange = ajustarArquivos;
-  $('selCanal').onchange = async e => { canal = e.target.value; verEquipe(false); fecharFerramentas(); $('cardMes').hidden = true; $('cardCliente').hidden = true; await aplicarCanal(); };
+  $('selCanal').onchange = async e => { canal = e.target.value; if (vendoGeral) return; verEquipe(false); fecharFerramentas(); $('cardMes').hidden = true; $('cardCliente').hidden = true; await aplicarCanal(); };
   $('selMes').onchange = e => { verEquipe(false); fecharFerramentas(); selectMes(e.target.value); };
 
   async function selectMes(id) {
+    if ((mes?.id || '') !== (id || '')) fecharPost();   // trocar de mês fecha o formulário; atualizar o mesmo, não
     mes = meses.find(m => m.id === id) || null;
     posts = [];
     if (mes) {
-      const data = await run(sb.from('posts').select('*, aprovacoes(*)').eq('mes_id', mes.id).order('ordem'));
-      await MEDIA.prepare(sb, data);
+      const m = mes;
+      const data = await run(sb.from('posts').select('*, aprovacoes(*)').eq('mes_id', m.id).order('ordem'));
+      if (mes !== m) return;   // trocaram de mês enquanto carregava
       posts = (data || []).map(p => ({ ...p, aprovacoes: (p.aprovacoes || []).sort((a, b) => a.created_at.localeCompare(b.created_at)) }));
+      ultimaBusca = Date.now();
+      contagens.delete(m.id); posts.forEach(contar);   // a contagem deste mês fica igual ao que acabou de chegar
+      // a lista aparece já com os textos; as miniaturas chegam em seguida
+      renderTop(); renderLista(); renderEntregas();
+      try { await MEDIA.prepare(sb, data); } catch (e) { console.warn(e); }
+      if (mes === m) renderLista();
+      return;
     }
-    renderTop(); renderLista(); limparPost();
+    renderTop(); renderLista(); renderEntregas(); fecharPost();
   }
 
   function renderTop() {
@@ -356,20 +390,17 @@
     const base = new URL('c',location.href).href;
     const alvo = !mes ? '' : canal === 'instagram' ? '&m=' + mes.ano_mes : '&e=' + mes.id;
     $('linkCliente').textContent = cliente && cliente.token ? `${base}#t=${cliente.token}${alvo}` : '—';
-    const ap = posts.filter(p => p.status === 'aprovado').length, aj = posts.filter(p => p.status === 'ajuste').length;
-    const pend = posts.filter(p => p.status === 'pendente').length;
-    $('summary').innerHTML = `<div><b>${posts.length}</b><span>${canal === 'instagram' ? 'posts no mês' : 'anúncios na campanha'}</span></div><div><b>${pend}</b><span>aguardando</span></div><div><b>${ap}</b><span>aprovados</span></div><div><b>${aj}</b><span>ajustes</span></div>`;
-    $('cardPost').hidden = !mes;
+    if (!mes) fecharPost();
+    $('btnNovoPost').hidden = !mes;
     $('cardLink').hidden = nivel < 2 || !cliente;
-    $('summary').hidden = !mes;
   }
   $('chkPub').onchange = async e => {
     if (!mes) return;
     const { error } = await sb.from('meses').update({ publicado: e.target.checked }).eq('id', mes.id);
-    if (error) return alert(error.message);
+    if (error) return aviso(error.message, 'erro');
     mes.publicado = e.target.checked; renderTop();
   };
-  $('btnCopy').onclick = async () => { if(!cliente?.token || !mes?.publicado) return alert('Publique o mês antes de copiar o link.'); await navigator.clipboard.writeText($('linkCliente').textContent); $('btnCopy').textContent = 'copiado!'; setTimeout(() => $('btnCopy').textContent = 'copiar link', 1500); };
+  $('btnCopy').onclick = async () => { if(!cliente?.token || !mes?.publicado) return aviso('Publique o mês antes de copiar o link.', 'erro'); await navigator.clipboard.writeText($('linkCliente').textContent); $('btnCopy').textContent = 'copiado!'; setTimeout(() => $('btnCopy').textContent = 'copiar link', 1500); };
 
   /* ---------- cliente ---------- */
   $('btnNovoCliente').onclick = () => { verEquipe(false); fecharFerramentas(); fillCliente(null); $('cardCliente').hidden = false; mostrar('cardCliente'); };
@@ -386,12 +417,12 @@
     const c = clientes.find(x => x.id === $('cardCliente').dataset.id);
     if (!c || nivel < 2) return;
     const nMeses = c.id === cliente?.id ? meses.length : null;
-    const aviso = nMeses === null ? 'todos os meses e posts dele' : nMeses ? `${nMeses > 1 ? `os ${nMeses} meses` : 'o mês'} e todos os posts dele` : 'o cadastro dele';
-    const digitado = prompt(`Isso apaga ${c.nome}, ${aviso} e o link do cliente para sempre. Não dá para desfazer.\n\nPara confirmar, digite o nome do cliente:`);
-    if (digitado === null) return;
-    if (digitado.trim().toLowerCase() !== c.nome.trim().toLowerCase()) return alert('O nome não confere. Nada foi excluído.');
+    const oQue = nMeses === null ? 'todos os meses e posts dele' : nMeses ? `${nMeses > 1 ? `os ${nMeses} meses` : 'o mês'} e todos os posts dele` : 'o cadastro dele';
+    if (!await confirmar(`Isso apaga ${c.nome}, ${oQue} e o link do cliente para sempre. Não dá para desfazer. Para confirmar, digite o nome do cliente.`,
+      { titulo: 'Excluir cliente?', ok: 'Excluir cliente', perigo: true, digitar: c.nome })) return;
     const { data, error } = await sb.from('clientes').delete().eq('id', c.id).select('id');
-    if (error || !data?.length) return alert(error?.message || 'Você não tem permissão para excluir este cliente.');
+    if (error || !data?.length) return aviso(error?.message || 'Você não tem permissão para excluir este cliente.', 'erro');
+    aviso(`${c.nome} foi excluído.`);
     localStorage.removeItem('adm_cliente_' + agencia.id);
     $('cardCliente').hidden = true;
     await loadClientes();
@@ -411,7 +442,8 @@
     $('msgCliente').textContent = 'Salvo.'; $('msgCliente').className = 'msg ok';
     localStorage.setItem('adm_cliente_' + agencia.id, data.id);
     $('cardCliente').hidden = true;
-    await loadClientes();
+    aviso(id ? 'Cliente salvo.' : `${data.nome} foi criado.`);
+    await loadClientes(null, data.id);
   };
   $('btnEditarCliente').onclick = () => $('titulo').onclick();
   $('titulo').onclick = () => { if (cliente && nivel >= 2) { verEquipe(false); fecharFerramentas(); fillCliente(cliente); $('cardCliente').hidden = false; mostrar('cardCliente'); } };
@@ -435,38 +467,29 @@
   /* ---------- mês ---------- */
   $('btnNovoMes').onclick = () => {
     verEquipe(false); fecharFerramentas();
-    if (!cliente) return alert('Crie um cliente primeiro.');
-    const ads = canal !== 'instagram';
-    const d = new Date(); if (!ads) d.setMonth(d.getMonth() + 1);
+    if (!cliente) return aviso('Crie um cliente primeiro.', 'erro');
+    const d = new Date(); d.setMonth(d.getMonth() + 1);
     $('mAnoMes').value = `${d.getFullYear()}-${pad(d.getMonth() + 1)}`;
-    $('mTitulo').value = ads ? '' : d.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' }).replace(/^\w/, c => c.toUpperCase()).replace(' de ', ' ');
-    $('mTitulo').placeholder = ads ? 'Black Friday · conversão' : 'Outubro 2026';
-    $('mesFormTitle').textContent = ads ? 'Nova campanha' : 'Novo mês';
-    $('mesFormHint').textContent = ads
-      ? 'A campanha junta os anúncios que o cliente vai aprovar, na mesma divisão do gerenciador.'
-      : 'Cada mês reúne os posts que o cliente vai aprovar.';
-    $('lblAnoMes').textContent = ads ? 'Mês de referência' : 'Ano e mês';
-    $('lblTituloMes').textContent = ads ? 'Nome da campanha' : 'Título';
-    $('lblIntroMes').innerHTML = (ads ? 'Observações' : 'Introdução') + ' <span class="hint">(opcional)</span>';
-    $('fldObjetivo').hidden = !ads;
+    $('mTitulo').value = d.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' }).replace(/^\w/, c => c.toUpperCase()).replace(' de ', ' ');
+    $('mesFormTitle').textContent = `Novo mês · ${CANAIS[canal]}`;
+    $('mesFormHint').textContent = `Cada mês reúne os posts ${canal === 'linkedin' ? 'do LinkedIn' : 'do feed'} que o cliente vai aprovar.`;
     $('mIntro').value = ''; $('msgMes').textContent = ''; $('cardMes').hidden = false; mostrar('cardMes');
   };
   $('btnFecharMes').onclick = () => $('cardMes').hidden = true;
   $('btnExcluirMes').onclick = async () => {
     if (!mes || nivel < 2) return;
-    const n = posts.length, ads = canal !== 'instagram';
-    const item = ads ? 'anúncio' : 'post';
-    if (!confirm(`Excluir ${ads ? 'a campanha' : 'o mês'} "${mes.titulo}" de ${cliente.nome}${n ? ` e os ${n} ${item}${n > 1 ? 's' : ''} dela` : ''}? Não dá para desfazer.`)) return;
+    const n = posts.length;
+    if (!await confirmar(`O mês "${mes.titulo}" de ${cliente.nome}${n ? ` e ${n > 1 ? `os ${n} posts` : 'o post'} dele` : ''} vão embora. Não dá para desfazer.`,
+      { titulo: 'Excluir o mês?', ok: 'Excluir', perigo: true })) return;
     const { data, error } = await sb.from('meses').delete().eq('id', mes.id).select('id');
-    if (error || !data?.length) return alert(error?.message || 'Você não tem permissão para excluir este mês.');
+    if (error || !data?.length) return aviso(error?.message || 'Você não tem permissão para excluir este mês.', 'erro');
     await selectCliente(cliente.id);
   };
   $('btnSalvarMes').onclick = async () => {
-    const ads = canal !== 'instagram';
     const row = { cliente_id: cliente.id, canal, ano_mes: $('mAnoMes').value.trim(), titulo: $('mTitulo').value.trim(),
-      intro: $('mIntro').value.trim() || null, objetivo: ads ? ($('mObjetivo').value || null) : null };
+      intro: $('mIntro').value.trim() || null };
     if (!/^\d{4}-\d{2}$/.test(row.ano_mes) || !row.titulo) {
-      $('msgMes').textContent = ads ? 'Dê um nome à campanha e use o formato 2026-10 no mês.' : 'Use o formato 2026-10 e um título.';
+      $('msgMes').textContent = 'Use o formato 2026-10 e um título.';
       $('msgMes').className = 'msg err'; return;
     }
     const { data, error } = await sb.from('meses').insert(row).select().single();
@@ -483,8 +506,8 @@
   async function upload(file, folder) {
     if (!file) return null;
     const ext = (file.name.split('.').pop() || 'jpg').toLowerCase();
-    if (!/^image\/(jpeg|png|webp|gif)$|^video\/mp4$/.test(file.type)) { alert('Use JPG, PNG, WebP, GIF ou MP4.'); return null; }
-    if (file.size > 50 * 1024 * 1024) { alert('O limite é 50 MB por arquivo.'); return null; }
+    if (!/^image\/(jpeg|png|webp|gif)$|^video\/mp4$/.test(file.type)) { aviso(`${file.name}: use JPG, PNG, WebP, GIF ou MP4.`, 'erro'); return null; }
+    if (file.size > 50 * 1024 * 1024) { aviso(`${file.name}: o limite é 50 MB por arquivo.`, 'erro'); return null; }
     try {
       const { data: { session } } = await sb.auth.getSession();
       const pedido = await fetch(cfg.SUPABASE_URL + '/functions/v1/midia', {
@@ -502,7 +525,7 @@
       MEDIA.guardar(j.ref, j.leitura);
       return j.ref;
     } catch (e) {
-      alert('Upload falhou: ' + (e.message || 'tente de novo.'));
+      aviso(`${file.name} não subiu: ` + (e.message || 'tente de novo.'), 'erro');
       return null;
     }
   }
@@ -539,45 +562,55 @@
   }
   function limparPost() {
     editing = null; files = []; renderThumbs();
-    ['pNumero', 'pData', 'pTema', 'pTitulo', 'pLegenda', 'pConjunto', 'pPublico', 'pDescricao', 'pDestino'].forEach(id => $(id).value = '');
-    const ads = canal !== 'instagram';
-    $('pCta').value = '';
-    $('pTipo').value = ads ? 'image' : 'carousel';
+    ['pNumero', 'pData', 'pTema', 'pTitulo', 'pLegenda'].forEach(id => $(id).value = '');
+    $('pTipo').value = canal === 'linkedin' ? 'image' : 'carousel';
     $('pNumero').value = pad(posts.length + 1);
-    // o próximo anúncio quase sempre é do mesmo conjunto: já vem preenchido
-    if (ads && posts.length) $('pConjunto').value = posts[posts.length - 1].conjunto || '';
-    $('postFormTitle').textContent = ads ? 'Novo anúncio' : 'Novo post';
-    $('msgPost').textContent = ''; ajustarArquivos();
+    $('postFormTitle').textContent = 'Novo post';
+    $('pResponsavel').value = ''; $('pInterno').value = '';
+    [...$('pInterno').options].forEach(o => o.disabled = false);
+    $('btnExcluirPost').hidden = true;
+    $('msgPost').textContent = '';
   }
-  $('btnLimpar').onclick = limparPost;
+  // O formulário só aparece quando alguém vai criar ou editar; o resto do tempo a lista fica sozinha.
+  function abrirPost(p) {
+    if (!mes) return;
+    if (!p) limparPost();
+    $('cardPost').hidden = false; mostrar('cardPost');
+    (p ? $('pTema') : $('pNumero')).focus({ preventScroll: true });
+  }
+  function fecharPost() { limparPost(); $('cardPost').hidden = true; }
+  $('btnNovoPost').onclick = () => { verEquipe(false); fecharFerramentas(); abrirPost(); };
+  $('btnLimpar').onclick = fecharPost;
+  $('btnFecharPost').onclick = fecharPost;
+  $('btnExcluirPost').onclick = async () => {
+    const p = posts.find(x => x.id === editing); if (!p || nivel < 2) return;
+    if (!await confirmar(`O post ${p.numero || ''} e o histórico de aprovação dele vão embora. Não dá para desfazer.`, { titulo: 'Excluir este post?', ok: 'Excluir', perigo: true })) return;
+    const { data, error } = await sb.from('posts').delete().eq('id', p.id).select('id');
+    if (error || !data?.length) return aviso(error?.message || 'Você não tem permissão para excluir.', 'erro');
+    fecharPost(); aviso(`Post ${p.numero || ''} excluído.`);
+    await selectMes(mes.id);
+  };
 
   $('btnSalvarPost').onclick = async () => {
     if (!mes) return;
-    const ads = canal !== 'instagram';
     const tipo = $('pTipo').value;
     const imgs = files.filter(f => f.kind === 'image').map(f => f.url);
     const vid = files.find(f => f.kind === 'video');
-    const destino = $('pDestino').value.trim();
     const erro = t => { $('msgPost').textContent = t; $('msgPost').className = 'msg err'; };
-    if (tipo === 'reel' && !vid) return erro(ads ? 'O anúncio em vídeo precisa de um .mp4.' : 'Reel precisa de um .mp4.');
-    if (tipo !== 'reel' && tipo !== 'texto' && !imgs.length) return erro('Envie pelo menos uma imagem.');
-    if (tipo === 'texto' && !$('pTitulo').value.trim()) return erro('O anúncio de texto precisa de um título.');
-    if (ads && destino && !/^https:\/\/\S+$/.test(destino)) return erro('O endereço precisa começar com https:// e não pode ter espaço.');
+    if (tipo === 'reel' && !vid) return erro(canal === 'linkedin' ? 'Vídeo precisa de um .mp4.' : 'Reel precisa de um .mp4.');
+    if (tipo !== 'reel' && !imgs.length) return erro('Envie pelo menos uma imagem.');
     const row = {
       mes_id: mes.id, numero: $('pNumero').value.trim() || pad(posts.length + 1), data: $('pData').value.trim() || null,
-      tema: ads ? null : $('pTema').value.trim(), titulo: $('pTitulo').value.trim(), tipo, legenda: $('pLegenda').value.trim(),
-      conjunto: ads ? ($('pConjunto').value.trim() || null) : null,
-      publico: ads ? ($('pPublico').value.trim() || null) : null,
-      descricao: ads ? ($('pDescricao').value.trim() || null) : null,
-      cta: ads ? ($('pCta').value || null) : null,
-      destino: ads ? (destino || null) : null,
-      slides: tipo === 'reel' || tipo === 'texto' ? [] : imgs, video_url: vid ? vid.url : null, capa_url: tipo === 'reel' ? (imgs[0] || null) : null
+      tema: $('pTema').value.trim(), titulo: $('pTitulo').value.trim(), tipo, legenda: $('pLegenda').value.trim(),
+      slides: tipo === 'reel' ? [] : imgs, video_url: vid ? vid.url : null, capa_url: tipo === 'reel' ? (imgs[0] || null) : null
     };
+    if (temPauta) { row.responsavel = $('pResponsavel').value || null; row.interno = $('pInterno').value || null; }
     if (!editing) row.ordem = posts.length;
     const q = editing ? sb.from('posts').update(row).eq('id', editing) : sb.from('posts').insert(row);
     const { error } = await q;
     if (error) { $('msgPost').textContent = error.message; $('msgPost').className = 'msg err'; return; }
-    $('msgPost').textContent = 'Salvo.'; $('msgPost').className = 'msg ok';
+    aviso(`Post ${row.numero} salvo.`);
+    fecharPost();
     await selectMes(mes.id);
   };
 
@@ -648,14 +681,14 @@
     return j;
   }
   $('btnOrfaos').onclick = async () => {
-    if (!confirm('Vou procurar, nos dois lugares, arquivos que não estão em nenhum post, e apagar o que achar. Não dá para desfazer. Confirmar?')) return;
+    if (!await confirmar('Vou procurar, nos dois lugares, arquivos que não estão em nenhum post, e apagar o que achar. Não dá para desfazer.', { titulo: 'Apagar arquivos sem dono?', ok: 'Procurar e apagar', perigo: true })) return;
     $('btnOrfaos').disabled = true; $('msgEspaco').textContent = 'Apagando…'; $('msgEspaco').className = 'msg';
     try { const j = await chamarLimpeza({ acao: 'orfaos' }); $('msgEspaco').textContent = `${j.apagados} arquivo(s) apagados.`; $('msgEspaco').className = 'msg ok'; }
     catch (e) { $('msgEspaco').textContent = e.message; $('msgEspaco').className = 'msg err'; }
     await carregarEspaco();
   };
   async function arquivar(mesId, botao) {
-    if (!confirm('Arquivar apaga as artes deste mês para sempre, dos dois lugares, e fecha o link do cliente. Não dá para desfazer, e o original precisa estar guardado com você. O post, o tema, a legenda e o histórico continuam no painel. Confirmar?')) return;
+    if (!await confirmar('Arquivar apaga as artes deste mês para sempre, dos dois lugares, e fecha o link do cliente. Não dá para desfazer, e o original precisa estar guardado com você. O post, o tema, a legenda e o histórico continuam no painel.', { titulo: 'Arquivar o mês?', ok: 'Arquivar', perigo: true })) return;
     botao.disabled = true; $('msgEspaco').textContent = 'Arquivando…'; $('msgEspaco').className = 'msg';
     try {
       const j = await chamarLimpeza({ acao: 'arquivar', mes_id: mesId, dias: +$('diasArquivo').value || 90 });
@@ -723,7 +756,7 @@
         <input data-numero="${i}" value="${esc(p.numero)}" aria-label="Número" size="3">
         <input data-tema="${i}" value="${esc(p.tema)}" aria-label="Tema" placeholder="Tema">
         <input data-data="${i}" value="${esc(p.data || '')}" aria-label="Dia da postagem" placeholder="dia" size="5">
-        <select data-tipo="${i}" aria-label="Formato">${Object.entries(canal === 'instagram' ? TIPO_FEED : TIPO_ADS).map(([k, v]) => `<option value="${k}" ${k === p.tipo ? 'selected' : ''}>${v}</option>`).join('')}</select>
+        <select data-tipo="${i}" aria-label="Formato">${Object.entries(canal === 'linkedin' ? TIPO_LINKEDIN : TIPO_FEED).map(([k, v]) => `<option value="${k}" ${k === p.tipo ? 'selected' : ''}>${v}</option>`).join('')}</select>
       </div>
       <div class="imp-info">
         <small>${p.arquivos.length} arquivo(s) · ${esc(p.origem)}</small>
@@ -760,7 +793,7 @@
         const tipo = vid ? 'reel' : p.tipo === 'reel' ? 'image' : p.tipo;
         const { error } = await sb.from('posts').insert({
           mes_id: mes.id, ordem: posts.length + criados, numero: String(p.numero || '').trim() || null,
-          data: (p.data || '').trim() || null, tema: canal === 'instagram' ? (p.tema || '').trim() : null, titulo: (p.titulo || p.tema || '').trim(),
+          data: (p.data || '').trim() || null, tema: (p.tema || '').trim(), titulo: (p.titulo || p.tema || '').trim(),
           tipo, legenda: (p.legenda || '').trim(), slides: tipo === 'reel' ? [] : imgs,
           video_url: vid ? vid.url : null, capa_url: tipo === 'reel' ? (imgs[0] || null) : null
         });
@@ -785,7 +818,7 @@
   // também tema, título, legenda e data; sem ele, o texto fica. O histórico fica sempre, e as artes
   // antigas viram "sem dono" e saem na limpeza.
   let ajustes = [], previas = [], roteiroAj = null;
-  const rotuloPost = p => `${canal === 'instagram' ? 'Post' : 'Anúncio'} ${p.numero || '—'}${(p.tema || semTags(p.titulo)) ? ' · ' + (p.tema || semTags(p.titulo)) : ''}`;
+  const rotuloPost = p => `Post ${p.numero || '—'}${(p.tema || semTags(p.titulo)) ? ' · ' + (p.tema || semTags(p.titulo)) : ''}`;
   function limparPrevias() { previas.forEach(u => URL.revokeObjectURL(u)); previas = []; }
   function previa(arquivo) { const u = URL.createObjectURL(arquivo); previas.push(u); return u; }
   $('btnAjustes').onclick = alternar('cardAjustes', () => {
@@ -842,7 +875,7 @@
   // o texto segue o post que recebe, pelo número dele no roteiro
   function textoDe(a) {
     const p = posts.find(x => x.id === a.alvo);
-    return PASTA.textoAjuste(p && PASTA.blocoDe(roteiroAj, p.numero), p, canal !== 'instagram');
+    return PASTA.textoAjuste(p && PASTA.blocoDe(roteiroAj, p.numero), p, false);
   }
   const filaAjustes = () => ajustes.filter(a => a.usar && a.alvo && planoDe(a).ok && (a.grupo || textoDe(a).nomes.length));
   function renderAjustes() {
@@ -955,7 +988,7 @@
   async function baixarPost(p, botao) {
     if (!p) return;
     const refs = arquivosPost(p);
-    if (!refs.length) return alert('Este post ainda não tem arquivos.');
+    if (!refs.length) return aviso('Este post ainda não tem arquivos.', 'erro');
     const texto = botao.textContent;
     botao.disabled = true; botao.textContent = 'baixando…';
     try {
@@ -976,7 +1009,7 @@
       blobs.forEach((b, i) => zip.file(nomes[i], b, { binary: true }));
       salvarBlob(await zip.generateAsync({ type: 'blob', compression: 'STORE' }), base + '.zip');
     } catch (e) {
-      alert('Não foi possível baixar: ' + (e.message || 'tente de novo.'));
+      aviso('Não foi possível baixar: ' + (e.message || 'tente de novo.'), 'erro');
     } finally {
       botao.disabled = false; botao.textContent = texto;
     }
@@ -989,9 +1022,8 @@
   const semTags = t => String(t || '').replace(/<[^>]+>/g, '');
   const dataHora = d => new Date(d).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' });
   $('btnExportar').onclick = alternar('cardExportar', () => {
-    const ads = canal !== 'instagram';
-    $('expAlcance').innerHTML = (mes ? `<option value="mes">${ads ? 'Esta campanha' : 'Este mês'}: ${esc(mes.titulo)}</option>` : '')
-      + `<option value="cliente">Tudo de ${esc(cliente.nome)} (todos os meses${podeAds ? ' e campanhas' : ''})</option>`;
+    $('expAlcance').innerHTML = (mes ? `<option value="mes">Este mês: ${esc(mes.titulo)}</option>` : '')
+      + `<option value="cliente">Tudo de ${esc(cliente.nome)} (todos os meses)</option>`;
     $('msgExportar').textContent = '';
   });
   $('btnFecharExportar').onclick = fecharFerramentas;
@@ -1007,10 +1039,10 @@
   };
 
   async function gerarRelatorio(alcance, filtro) {
-    const ordemCanal = { instagram: 0, meta: 1, google: 2 };
+    const ordemCanal = { instagram: 0, linkedin: 1 };
     const lista = (alcance === 'mes' && mes ? [mes] : [...todosMeses])
       .sort((a, b) => (ordemCanal[a.canal || 'instagram'] - ordemCanal[b.canal || 'instagram']) || b.ano_mes.localeCompare(a.ano_mes));
-    if (!lista.length) throw new Error('este cliente ainda não tem mês nem campanha.');
+    if (!lista.length) throw new Error('este cliente ainda não tem mês.');
     const todos = await run(sb.from('posts').select('*, aprovacoes(*)').in('mes_id', lista.map(m => m.id)).order('ordem'));
     const doCliente = p => p.aprovacoes.some(a => (a.origem || 'cliente') === 'cliente');
     const passa = p => filtro === 'todos' || (filtro === 'ajuste' ? p.status === 'ajuste' : doCliente(p));
@@ -1029,7 +1061,7 @@
     const postsTodos = grupos.flatMap(g => g.posts);
     const conta = s => postsTodos.filter(p => p.status === s).length;
     const comentarios = postsTodos.reduce((n, p) => n + p.aprovacoes.filter(a => a.acao !== 'aprovado' && (a.origem || 'cliente') === 'cliente').length, 0);
-    const escopo = alcance === 'mes' && mes ? mes.titulo : 'Todos os meses' + (podeAds ? ' e campanhas' : '');
+    const escopo = alcance === 'mes' && mes ? mes.titulo : 'Todos os meses';
     const filtroTxt = { retorno: 'posts com retorno do cliente', ajuste: 'posts com ajuste pedido', todos: 'todos os posts' }[filtro];
 
     const thumbs = (g, p) => {
@@ -1051,12 +1083,11 @@
         }).join('')}</ol>`
       : '<p class="rel-vazio">Sem retorno do cliente até agora.</p>';
     const bloco = (g, p) => {
-      const ads = (g.mes.canal || 'instagram') !== 'instagram';
-      const nome = ads ? semTags(p.titulo) || 'Anúncio' : p.tema || semTags(p.titulo) || 'Post';
+      const nome = p.tema || semTags(p.titulo) || 'Post';
       const detalhes = [TIPO[p.tipo] + (p.tipo === 'carousel' && (p.slides || []).length > 1 ? ` · ${p.slides.length} lâminas` : ''),
-        p.data ? (ads ? 'início ' : 'dia ') + p.data : '', ads ? p.conjunto : semTags(p.titulo) !== nome ? semTags(p.titulo) : ''].filter(Boolean);
+        p.data ? 'dia ' + p.data : '', semTags(p.titulo) !== nome ? semTags(p.titulo) : ''].filter(Boolean);
       return `<article class="rel-post">
-        <div class="rel-post-head"><div><h3>${ads ? 'Anúncio' : 'Post'} ${esc(p.numero || '')} · ${esc(nome)}</h3><p>${detalhes.map(esc).join(' · ')}</p></div><span class="rel-status ${esc(p.status)}">${STATUS[p.status] || esc(p.status)}</span></div>
+        <div class="rel-post-head"><div><h3>Post ${esc(p.numero || '')} · ${esc(nome)}</h3><p>${detalhes.map(esc).join(' · ')}</p></div><span class="rel-status ${esc(p.status)}">${STATUS[p.status] || esc(p.status)}</span></div>
         ${thumbs(g, p)}${historico(p)}</article>`;
     };
 
@@ -1089,36 +1120,38 @@
     window.print();
   }
 
+  const ETAPAS = { revisao: 'Revisão interna', pendente: 'Aguardando', ajuste: 'Ajuste', aprovado: 'Aprovado', reserva: 'Gaveta' };
+  const nomeMembro = id => (membros.find(m => m.usuario_id === id) || {}).nome || '';
+  const iniciais = nome => String(nome || '').split(/\s+/).filter(Boolean).slice(0, 2).map(x => x[0].toUpperCase()).join('') || '?';
+  const avatar = id => id ? `<span class="av" title="${esc(nomeMembro(id))}">${esc(iniciais(nomeMembro(id)))}</span>` : '';
+  const etiqueta = p => `<span class="pill ${PAINEL.etapa(p)}">${ETAPAS[PAINEL.etapa(p)] || STATUS[p.status]}</span>`;
+  const filtrados = () => posts.filter(p => !$('filterStatus').value || PAINEL.etapa(p) === $('filterStatus').value);
+  const nomePost = p => p.tema || semTags(p.titulo);
+
   function renderLista() {
-    $('lista').innerHTML = posts.filter(p=>!$('filterStatus').value || p.status===$('filterStatus').value).map(p => {
+    $('tabelaPosts').hidden = vista === 'quadro';
+    $('quadro').hidden = vista !== 'quadro';
+    document.querySelectorAll('[data-vista]').forEach(b => b.classList.toggle('on', b.dataset.vista === vista));
+    if (vista === 'quadro') return renderQuadro();
+    $('lista').innerHTML = filtrados().map(p => {
       const cover = p.capa_url || (p.slides && p.slides[0]) || '';
       const ret = p.aprovacoes;
-      return `<tr>
-        <td>${cover ? `<img src="${esc(MEDIA.url(cover))}">` : ''}</td>
-        <td>${esc(p.numero)}<br><small style="color:var(--mute)">${esc(p.data || '')}</small></td>
-        <td>${esc(canal === 'instagram' ? p.tema : (p.titulo || '').replace(/<[^>]+>/g, ''))}<br><small style="color:var(--mute)">${esc(canal === 'instagram' ? (p.titulo || '').replace(/<[^>]+>/g, '').slice(0, 60) : (p.conjunto || 'sem conjunto'))}</small></td>
+      return `<tr class="st-${PAINEL.etapa(p)}">
+        <td>${cover && MEDIA.url(cover) ? `<img src="${esc(MEDIA.url(cover))}" alt="">` : '<span class="sem-capa"></span>'}</td>
+        <td>${esc(p.numero)}<br><small>${esc(p.data || '')}</small></td>
+        <td>${esc(p.tema)}<br><small>${esc(semTags(p.titulo).slice(0, 60))}</small>${p.responsavel ? `<div class="resp">${avatar(p.responsavel)}<small>${esc(nomeMembro(p.responsavel))}</small></div>` : ''}</td>
         <td>${TIPO[p.tipo]}${p.slides && p.slides.length > 1 ? ` · ${p.slides.length}` : ''}</td>
-        <td><span class="pill ${p.status}">${STATUS[p.status]}</span></td>
-        <td>${ret.length ? `<ul class="hist">${ret.map(a => `<li class="${a.acao}"><b>${a.acao === 'aprovado' ? 'Aprovado' : a.acao === 'ajuste' ? 'Ajuste' : 'Comentário'}</b>${a.autor ? ' · ' + esc(a.autor) : ''} · ${new Date(a.created_at).toLocaleDateString('pt-BR')}${a.comentario ? `<p>${esc(a.comentario)}</p>` : ''}</li>`).join('')}</ul>` : '<small style="color:var(--mute)">—</small>'}</td>
+        <td>${etiqueta(p)}</td>
+        <td>${ret.length ? `<ul class="hist">${ret.map(a => `<li class="${a.acao}"><b>${a.acao === 'aprovado' ? 'Aprovado' : a.acao === 'ajuste' ? 'Ajuste' : 'Comentário'}</b>${a.autor ? ' · ' + esc(a.autor) : ''} · ${new Date(a.created_at).toLocaleDateString('pt-BR')}${a.comentario ? `<p>${esc(a.comentario)}</p>` : ''}</li>`).join('')}</ul>` : '<small>—</small>'}</td>
         <td class="row-actions">
           <button data-edit="${p.id}">editar</button>
           ${arquivosPost(p).length ? `<button data-baixar="${p.id}" title="Baixa os arquivos originais, na qualidade em que foram enviados">baixar</button>` : ''}
-          ${p.status === 'ajuste' ? `<button data-reset="${p.id}">marcar como ajustado</button>` : ''}
-          <button data-up="${p.id}">↑</button><button data-down="${p.id}">↓</button>
-          ${nivel >= 2 ? `<button data-del="${p.id}">excluir</button>` : ''}
+          ${p.status === 'ajuste' && !p.interno ? `<button data-reset="${p.id}">marcar como ajustado</button>` : ''}
+          ${p.interno === 'revisao' && nivel >= 2 ? `<button data-liberar="${p.id}">liberar para o cliente</button>` : ''}
+          <button data-up="${p.id}" aria-label="Subir na ordem">↑</button><button data-down="${p.id}" aria-label="Descer na ordem">↓</button>
         </td></tr>`;
-    }).join('') || `<tr class="empty-row"><td colspan="7">${mes ? (canal === 'instagram' ? 'Nenhum post neste filtro ainda.' : 'Nenhum anúncio neste filtro ainda.') : cliente ? (canal === 'instagram' ? 'Crie um mês para começar a subir posts.' : 'Crie uma campanha para começar a subir criativos.') : (nivel < 2 && !clientes.length ? 'Nenhum cliente liberado para você ainda. Fale com o Head do seu squad.' : 'Escolha ou crie um cliente para começar.')}</td></tr>`;
-
-    $('lista').querySelectorAll('[data-edit]').forEach(b => b.onclick = () => editPost(b.dataset.edit));
-    $('lista').querySelectorAll('[data-baixar]').forEach(b => b.onclick = () => baixarPost(posts.find(p => p.id === b.dataset.baixar), b));
-    $('lista').querySelectorAll('[data-del]').forEach(b => b.onclick = async () => {
-      if (!confirm('Excluir este post?')) return;
-      await run(sb.from('posts').delete().eq('id', b.dataset.del)); await selectMes(mes.id);
-    });
-    $('lista').querySelectorAll('[data-reset]').forEach(b => b.onclick = async () => {
-      await run(sb.rpc('marcar_ajustado',{p_post:b.dataset.reset}));
-      await selectMes(mes.id);
-    });
+    }).join('') || `<tr class="empty-row"><td colspan="7">${vazio()}</td></tr>`;
+    ligarAcoes($('lista'));
     const move = async (id, dir) => {
       const i = posts.findIndex(p => p.id === id), j = i + dir; if (j < 0 || j >= posts.length) return;
       const a = posts[i], b = posts[j];
@@ -1129,17 +1162,254 @@
     $('lista').querySelectorAll('[data-up]').forEach(b => b.onclick = () => move(b.dataset.up, -1));
     $('lista').querySelectorAll('[data-down]').forEach(b => b.onclick = () => move(b.dataset.down, 1));
   }
+  function vazio() {
+    return mes ? 'Nenhum post neste filtro ainda.'
+      : cliente ? `Crie um mês ${canal === 'linkedin' ? 'de LinkedIn ' : ''}para começar a subir posts.`
+      : (nivel < 2 && !clientes.length ? 'Nenhum cliente liberado para você ainda. Fale com o Head do seu squad.' : 'Escolha ou crie um cliente para começar.');
+  }
+  // Os botões são os mesmos na lista e no quadro.
+  function ligarAcoes(raiz) {
+    raiz.querySelectorAll('[data-edit]').forEach(b => b.onclick = e => { e.stopPropagation(); editPost(b.dataset.edit); });
+    raiz.querySelectorAll('[data-baixar]').forEach(b => b.onclick = e => { e.stopPropagation(); baixarPost(posts.find(p => p.id === b.dataset.baixar), b); });
+    raiz.querySelectorAll('[data-reset]').forEach(b => b.onclick = async e => {
+      e.stopPropagation(); b.disabled = true;
+      await run(sb.rpc('marcar_ajustado', { p_post: b.dataset.reset }));
+      aviso('Marcado como ajustado. O cliente vê a nova versão para aprovar.');
+      await selectMes(mes.id);
+    });
+    raiz.querySelectorAll('[data-liberar]').forEach(b => b.onclick = async e => {
+      e.stopPropagation(); b.disabled = true;
+      await run(sb.from('posts').update({ interno: null }).eq('id', b.dataset.liberar));
+      aviso(mes.publicado ? 'Liberado. O cliente já vê este post no link.' : 'Liberado. O cliente vai ver quando o mês for publicado.');
+      await selectMes(mes.id);
+    });
+  }
+
+  // Quadro: uma coluna por etapa. Só mostra; quem muda o status é o cliente.
+  function renderQuadro() {
+    const lista = filtrados();
+    const colunas = ['revisao', 'pendente', 'ajuste', 'aprovado', 'reserva'].filter(k => (k !== 'revisao' && k !== 'reserva') || lista.some(p => PAINEL.etapa(p) === k));
+    $('quadro').style.setProperty('--colunas', colunas.length);
+    $('quadro').innerHTML = !lista.length ? `<p class="quadro-vazio">${vazio()}</p>` : colunas.map(k => {
+      const itens = lista.filter(p => PAINEL.etapa(p) === k);
+      return `<section class="coluna c-${k}"><header><span>${ETAPAS[k]}</span><small>${itens.length}</small></header>
+        ${itens.map(p => {
+          const cover = p.capa_url || (p.slides && p.slides[0]) || '';
+          const url = cover && MEDIA.url(cover);
+          return `<article class="cartao" data-edit="${p.id}" tabindex="0">
+            ${url ? `<img src="${esc(url)}" alt="">` : '<span class="sem-capa"></span>'}
+            <div><b>${esc(p.numero || '')}${nomePost(p) ? ' · ' + esc(nomePost(p)) : ''}</b>
+              <small>${[TIPO[p.tipo], p.data].filter(Boolean).map(esc).join(' · ')}</small>
+              <div class="cartao-pe">${avatar(p.responsavel)}${p.aprovacoes.length ? `<small title="Retornos do cliente">💬 ${p.aprovacoes.filter(a => a.origem !== 'agencia').length}</small>` : ''}
+                ${p.status === 'ajuste' && !p.interno ? `<button data-reset="${p.id}">ajustado</button>` : ''}
+                ${p.interno === 'revisao' && nivel >= 2 ? `<button data-liberar="${p.id}">liberar</button>` : ''}</div></div>
+          </article>`;
+        }).join('') || '<p class="coluna-vazia">Nada aqui.</p>'}</section>`;
+    }).join('');
+    ligarAcoes($('quadro'));
+    $('quadro').querySelectorAll('.cartao').forEach(c => c.onkeydown = e => { if (e.key === 'Enter') editPost(c.dataset.edit); });
+  }
+  document.querySelectorAll('[data-vista]').forEach(b => b.onclick = () => {
+    vista = b.dataset.vista;
+    try { localStorage.setItem('adm_vista', vista); } catch (e) {}
+    renderLista();
+  });
+
+  /* ---------- entregas: os meses do cliente como cartões com progresso ---------- */
+  function contar(p) {
+    const c = contagens.get(p.mes_id) || { total: 0, pendente: 0, ajuste: 0, aprovado: 0, revisao: 0, reserva: 0 };
+    const e = PAINEL.etapa(p);
+    c[e] = (c[e] || 0) + 1;
+    if (e !== 'reserva') c.total++;
+    contagens.set(p.mes_id, c);
+  }
+  function renderEntregas() {
+    const el = $('entregas');
+    el.hidden = vendoGeral || !cliente;
+    if (el.hidden) return;
+    el.innerHTML = meses.map(m => {
+      const c = contagens.get(m.id) || { total: 0, aprovado: 0, ajuste: 0, pendente: 0, revisao: 0 };
+      const pct = c.total ? Math.round(100 * c.aprovado / c.total) : 0;
+      const estado = m.arquivado_em ? 'Arquivado' : m.publicado ? (c.total && c.aprovado === c.total ? 'Aprovado' : 'Em aprovação') : 'Rascunho';
+      return `<button class="entrega${mes && m.id === mes.id ? ' on' : ''}" data-mes="${m.id}">
+        <span class="entrega-topo"><b>${esc(m.titulo)}</b><small class="estado e-${estado === 'Rascunho' ? 'rascunho' : estado === 'Aprovado' ? 'ok' : estado === 'Arquivado' ? 'arquivo' : 'andando'}">${estado}</small></span>
+        <span class="progresso" aria-hidden="true"><i style="width:${pct}%"></i></span>
+        <small>${c.total ? `${c.aprovado} de ${c.total} aprovados` : 'Nenhum post ainda'}${c.ajuste ? ` · ${c.ajuste} em ajuste` : ''}${c.revisao ? ` · ${c.revisao} em revisão` : ''}</small>
+      </button>`;
+    }).join('') + `<button class="entrega nova" id="entregaNova"><svg class="i" viewBox="0 0 16 16"><path d="M8 3v10M3 8h10"/></svg>Novo mês</button>`;
+    el.querySelectorAll('[data-mes]').forEach(b => b.onclick = () => { verEquipe(false); fecharFerramentas(); $('selMes').value = b.dataset.mes; selectMes(b.dataset.mes); });
+    $('entregaNova').onclick = () => $('btnNovoMes').click();
+  }
+
+  /* ---------- visão geral da agência ---------- */
+  async function verGeral(abrir) {
+    vendoGeral = abrir;
+    document.body.classList.toggle('vendo-geral', abrir);
+    $('geral').hidden = !abrir;
+    $('btnGeral').classList.toggle('active', abrir);
+    if (abrir) {
+      fecharFerramentas(); fecharPost(); $('cardMes').hidden = true;
+      cliente = null; mes = null; posts = [];
+      if ($('selCliente').querySelector('option[value=""]')) $('selCliente').value = '';
+      $('selMes').innerHTML = '';
+      renderTop();
+      $('eyebrow').textContent = 'Visão geral';
+      $('titulo').textContent = agencia ? agencia.nome : '—';
+      $('titulo').title = '';
+      renderEntregas();
+      await carregarGeral();
+    } else {
+      $('titulo').title = nivel >= 2 ? 'Editar cliente' : '';
+      rotularCanal();
+    }
+  }
+  $('btnGeral').onclick = () => { verEquipe(false); verEspaco(false); $('cardCliente').hidden = true; verGeral(true); };
+
+  function opcoesMeses() {
+    const atual = PAINEL.mesAtual();
+    const lista = []; for (let i = -6; i <= 2; i++) lista.push(PAINEL.somarMeses(atual, i));
+    const antes = $('geralMes').value || atual;
+    $('geralMes').innerHTML = lista.reverse().map(m => `<option value="${m}">${PAINEL.nomeMes(m)}${m === atual ? ' · este mês' : ''}</option>`).join('');
+    $('geralMes').value = lista.includes(antes) ? antes : atual;
+  }
+  async function carregarGeral() {
+    if (!agencia) return;
+    if (!$('geralMes').options.length) opcoesMeses();
+    const sel = $('geralMes').value;
+    const ids = clientes.map(c => c.id);
+    $('msgGeral').textContent = '';
+    if (!ids.length) { geral = { sel, meses: [], posts: [] }; return renderGeral(); }
+    $('geral').classList.add('carregando');
+    try {
+      // três meses para trás (números de aprovação) e um para frente (pauta da semana que vira o mês)
+      const ms = (await run(sb.from('meses').select('*').in('cliente_id', ids).gte('ano_mes', PAINEL.somarMeses(sel, -2)).lte('ano_mes', PAINEL.somarMeses(sel, 1))))
+        .filter(m => CANAIS[m.canal || 'instagram']);
+      const cols = 'id,mes_id,numero,data,tema,titulo,tipo,status,created_at,slides,capa_url' + (temPauta ? ',responsavel,interno' : '') + ',aprovacoes(acao,origem,created_at)';
+      const ps = ms.length ? await run(sb.from('posts').select(cols).in('mes_id', ms.map(m => m.id)).order('ordem')) : [];
+      if (!vendoGeral || $('geralMes').value !== sel) return;
+      const porMes = new Map(ms.map(m => [m.id, m]));
+      geral = { sel, meses: ms, posts: ps.map(p => { const m = porMes.get(p.mes_id); return { ...p, _anoMes: m.ano_mes, _publicadoEm: m.publicado_em, _cliente: m.cliente_id, _mes: m }; }) };
+      ultimaBusca = Date.now();
+      renderGeral();
+    } catch (e) { $('msgGeral').textContent = e.message; $('msgGeral').className = 'msg err'; }
+    finally { $('geral').classList.remove('carregando'); }
+  }
+  $('geralMes').onchange = carregarGeral;
+  let abaGeral = 'clientes';
+  document.querySelectorAll('#geralAbas [data-aba]').forEach(b => b.onclick = () => { abaGeral = b.dataset.aba; renderGeral(); });
+
+  function renderGeral() {
+    if (!geral) return;
+    document.querySelectorAll('#geralAbas [data-aba]').forEach(b => { b.classList.toggle('on', b.dataset.aba === abaGeral); b.setAttribute('aria-selected', b.dataset.aba === abaGeral); });
+    $('geralClientes').hidden = abaGeral !== 'clientes';
+    $('geralPauta').hidden = abaGeral !== 'pauta';
+    $('geralAprovacao').hidden = abaGeral !== 'aprovacao';
+    $('geralMes').hidden = abaGeral === 'pauta';
+    const doMes = geral.posts.filter(p => p._anoMes === geral.sel);
+    const porCliente = c => doMes.filter(p => p._cliente === c.id);
+    const resumos = clientes.map(c => ({ c, r: PAINEL.resumo(porCliente(c), geral.sel), meses: geral.meses.filter(m => m.cliente_id === c.id && m.ano_mes === geral.sel) }));
+    const t = PAINEL.somar(resumos.map(x => x.r));
+    const kpi = (n, txt, cls = '') => `<div class="kpi ${cls}"><b>${n}</b><span>${txt}</span></div>`;
+    $('geralKpis').innerHTML = kpi(t.total, `posts em ${PAINEL.nomeMes(geral.sel).split(' ')[0].toLowerCase()}`)
+      + kpi(t.pendente, 'com o cliente', 'k-pendente') + kpi(t.ajuste, 'em ajuste', 'k-ajuste') + kpi(t.aprovado, 'aprovados', 'k-aprovado')
+      + (t.revisao ? kpi(t.revisao, 'em revisão interna', 'k-revisao') : '') + kpi(t.atrasados, 'atrasados', t.atrasados ? 'k-atraso' : '');
+    if (abaGeral === 'clientes') renderClientesGeral(resumos);
+    if (abaGeral === 'pauta') renderPauta();
+    if (abaGeral === 'aprovacao') renderAprovacao();
+  }
+  function renderClientesGeral(resumos) {
+    const nomeMesCurto = PAINEL.nomeMes(geral.sel).split(' ')[0].toLowerCase();
+    const ordem = [...resumos].sort((a, b) => (b.r.atrasados - a.r.atrasados) || (b.r.ajuste - a.r.ajuste) || (!!b.meses.length - !!a.meses.length) || a.c.nome.localeCompare(b.c.nome, 'pt-BR'));
+    $('geralClientes').innerHTML = !ordem.length ? `<p class="vazio-geral">${nivel >= 2 ? 'Nenhum cliente ainda. Use "Novo" na barra lateral para criar o primeiro.' : 'Nenhum cliente liberado para você ainda.'}</p>` : ordem.map(({ c, r, meses: ms }) => {
+      const rascunho = ms.some(m => !m.publicado);
+      const canais = [...new Set(ms.map(m => CANAIS[m.canal || 'instagram'].split(' ·')[0]))];
+      const prox = r.proximo ? r.proximo.data.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }) : '';
+      return `<button class="cli" data-cli="${c.id}" data-mes="${ms[0] ? ms[0].id : ''}">
+        <span class="cli-topo"><span class="cli-av">${esc(iniciais(c.nome))}</span><span class="cli-nome"><b>${esc(c.nome)}</b><small>${ms.length ? canais.join(' · ') : `sem ${nomeMesCurto} ainda`}</small></span>${rascunho ? '<small class="estado e-rascunho">Rascunho</small>' : ''}</span>
+        ${ms.length ? `<span class="progresso" aria-hidden="true"><i style="width:${Math.round(100 * r.progresso)}%"></i></span>
+        <span class="cli-linha"><small>${r.aprovado} de ${r.total} aprovados</small>${prox ? `<small>próximo ${prox}</small>` : ''}</span>
+        <span class="cli-chips">${r.pendente ? `<span class="chip-st pendente">${r.pendente} com o cliente</span>` : ''}${r.ajuste ? `<span class="chip-st ajuste">${r.ajuste} em ajuste</span>` : ''}${r.revisao ? `<span class="chip-st revisao">${r.revisao} em revisão</span>` : ''}${r.atrasados ? `<span class="chip-st atraso">${r.atrasados} atrasado${r.atrasados > 1 ? 's' : ''}</span>` : ''}</span>` : ''}
+      </button>`;
+    }).join('');
+    $('geralClientes').querySelectorAll('[data-cli]').forEach(b => b.onclick = () => abrirCliente(b.dataset.cli, b.dataset.mes));
+  }
+  async function abrirCliente(id, mesId) {
+    const m = mesId && geral && geral.meses.find(x => x.id === mesId);
+    if (m && (m.canal || 'instagram') !== canal) { canal = m.canal || 'instagram'; $('selCanal').value = canal; }
+    mesPreferido = mesId || null;
+    $('selCliente').value = id;
+    await verGeral(false);
+    await selectCliente(id);
+    scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
+  function renderPauta() {
+    if (!semanaPauta) semanaPauta = PAINEL.inicioSemana();
+    const seg = semanaPauta, fim = new Date(seg); fim.setDate(fim.getDate() + 6);
+    const f = d => d.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' }).replace('.', '');
+    $('pautaPeriodo').textContent = `${f(seg)} a ${f(fim)}. Os posts de cada pessoa, pelo dia previsto. Gaveta fica de fora.`;
+    const linhas = PAINEL.pauta(geral.posts, seg);
+    const hoje = PAINEL.inicioSemana(new Date()).getTime() === seg.getTime() ? (new Date().getDay() + 6) % 7 : -1;
+    const dias = Array.from({ length: 7 }, (_, i) => { const d = new Date(seg); d.setDate(d.getDate() + i); return d; });
+    const nomeCli = id => (clientes.find(c => c.id === id) || {}).nome || '';
+    const ordem = [...linhas.keys()].sort((a, b) => (!a) - (!b) || nomeMembro(a).localeCompare(nomeMembro(b), 'pt-BR'));
+    const cab = `<div class="pauta-canto"></div>` + dias.map((d, i) => `<div class="pauta-dia${i === hoje ? ' hoje' : ''}"><b>${d.toLocaleDateString('pt-BR', { weekday: 'long' }).replace('-feira', '')}</b><small>${f(d)}</small></div>`).join('');
+    $('pautaGrade').innerHTML = !ordem.length ? '<p class="vazio-geral">Nenhum post com data nesta semana.</p>' : cab + ordem.map(k => {
+      const nome = k ? nomeMembro(k) || 'Alguém que saiu da equipe' : 'Sem responsável';
+      const papel = k ? PAPEIS[(membros.find(m => m.usuario_id === k) || {}).papel] || '' : (temPauta ? 'Escolha no post' : '');
+      return `<div class="pauta-pessoa">${k ? `<span class="av">${esc(iniciais(nome))}</span>` : '<span class="av vazio">?</span>'}<span><b>${esc(nome)}</b><small>${esc(papel)}</small></span></div>`
+        + linhas.get(k).map((dia, i) => `<div class="pauta-celula${i === hoje ? ' hoje' : ''}">${dia.map(p => `<button class="tarefa t-${PAINEL.etapa(p)}" data-cli="${p._cliente}" data-mes="${p.mes_id}">
+            <small>${esc(nomeCli(p._cliente))}</small><b>${esc(p.numero || '')}${p.tema || p.titulo ? ' · ' + esc(p.tema || semTags(p.titulo)) : ''}</b><span class="pill ${PAINEL.etapa(p)}">${ETAPAS[PAINEL.etapa(p)]}</span></button>`).join('')}</div>`).join('');
+    }).join('');
+    $('pautaGrade').querySelectorAll('[data-cli]').forEach(b => b.onclick = () => abrirCliente(b.dataset.cli, b.dataset.mes));
+  }
+  const andarSemana = n => { semanaPauta = new Date((semanaPauta || PAINEL.inicioSemana()).getTime()); semanaPauta.setDate(semanaPauta.getDate() + 7 * n); garantirMesPauta(); };
+  // a semana pode cair fora dos meses carregados (três para trás, um para frente): aí troca o mês da visão geral
+  function garantirMesPauta() {
+    const meio = new Date(semanaPauta); meio.setDate(meio.getDate() + 3);
+    const alvo = PAINEL.mesAtual(meio);
+    const fora = alvo < PAINEL.somarMeses(geral.sel, -2) || alvo > PAINEL.somarMeses(geral.sel, 1);
+    if (fora && [...$('geralMes').options].some(o => o.value === alvo)) { $('geralMes').value = alvo; return carregarGeral(); }
+    renderPauta();
+  }
+  $('pautaAntes').onclick = () => andarSemana(-1);
+  $('pautaDepois').onclick = () => andarSemana(1);
+  $('pautaHoje').onclick = () => { semanaPauta = PAINEL.inicioSemana(); garantirMesPauta(); };
+
+  function renderAprovacao() {
+    const limite = PAINEL.somarMeses(geral.sel, -2);
+    const janela = geral.posts.filter(p => p._anoMes >= limite && p._anoMes <= geral.sel && !p.interno);
+    const pct = v => v == null ? '—' : Math.round(v * 100) + '%';
+    const num = v => v == null ? '—' : v.toFixed(1).replace('.', ',').replace(',0', '');
+    const linha = (nome, a, cls = '') => `<tr class="${cls}"><td>${nome}</td><td>${a.comRetorno}</td><td>${PAINEL.duracao(a.espera)}</td><td>${num(a.ajustesPorPost)}</td><td>${pct(a.deFirst)}</td></tr>`;
+    const porCliente = clientes.map(c => ({ c, a: PAINEL.aprovacao(janela.filter(p => p._cliente === c.id)) })).filter(x => x.a.comRetorno)
+      .sort((x, y) => (y.a.espera || 0) - (x.a.espera || 0));
+    $('aprovacaoLista').innerHTML = !porCliente.length ? '<tr class="empty-row"><td colspan="5">Nenhum retorno de cliente nestes três meses.</td></tr>'
+      : linha('<b>Agência toda</b>', PAINEL.aprovacao(janela), 'total') + porCliente.map(x => linha(`<button class="link-cli" data-cli="${x.c.id}">${esc(x.c.nome)}</button>`, x.a)).join('');
+    $('aprovacaoLista').querySelectorAll('[data-cli]').forEach(b => b.onclick = () => abrirCliente(b.dataset.cli, ''));
+  }
+
+  // Ao voltar para a aba, busca de novo o que estiver na tela (se passou meio minuto e ninguém está editando).
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden || !agencia || Date.now() - ultimaBusca < 30000) return;
+    const ocupado = !$('cardPost').hidden || [...document.querySelectorAll('.ferramenta')].some(f => !f.hidden) || !$('cardCliente').hidden || !$('cardMes').hidden;
+    if (ocupado) return;
+    if (vendoGeral) carregarGeral(); else if (mes) selectMes(mes.id);
+  });
 
   function editPost(id) {
     const p = posts.find(x => x.id === id); if (!p) return;
     editing = id;
     $('pNumero').value = p.numero || ''; $('pData').value = p.data || ''; $('pTema').value = p.tema || '';
     $('pTipo').value = p.tipo; $('pTitulo').value = p.titulo || ''; $('pLegenda').value = p.legenda || '';
-    $('pConjunto').value = p.conjunto || ''; $('pPublico').value = p.publico || '';
-    $('pDescricao').value = p.descricao || ''; $('pCta').value = p.cta || ''; $('pDestino').value = p.destino || '';
     files = [...(p.slides || []).map(u => ({ url: u, kind: 'image' })), ...(p.capa_url ? [{ url: p.capa_url, kind: 'image' }] : []), ...(p.video_url ? [{ url: p.video_url, kind: 'video' }] : [])];
-    renderThumbs(); ajustarArquivos();
-    $('postFormTitle').textContent = `${canal === 'instagram' ? 'Editando post' : 'Editando anúncio'} ${p.numero || ''}`.trim();
-    $('cardPost').scrollIntoView({ behavior: 'smooth' });
+    renderThumbs();
+    $('pResponsavel').value = p.responsavel || ''; $('pInterno').value = p.interno || '';
+    // quem não é Head não tira um post da revisão interna (o banco também barra)
+    [...$('pInterno').options].forEach(o => o.disabled = !o.value && p.interno === 'revisao' && nivel < 2);
+    $('btnExcluirPost').hidden = nivel < 2;
+    $('postFormTitle').textContent = `Editando post ${p.numero || ''}`.trim();
+    $('msgPost').textContent = '';
+    abrirPost(p);
   }
 })();

@@ -108,8 +108,8 @@ assert.equal((await customer(req({token:'a'.repeat(24),entrega:'nao-e-uuid'}))).
 {
  let visto=null;
  const c2=load('cliente',{rpc:async(n,a)=>{visto=a;return {data:null};},storage:{from:()=>({createSignedUrl:async()=>({data:{signedUrl:'x'}})})}});
- await c2(req({token:'a'.repeat(24),canal:'meta',entrega:'11111111-2222-4333-8444-555555555555'}));
- assert.equal(visto.p_canal,'meta');checks++;
+ await c2(req({token:'a'.repeat(24),canal:'linkedin',entrega:'11111111-2222-4333-8444-555555555555'}));
+ assert.equal(visto.p_canal,'linkedin');checks++;
  assert.equal(visto.p_entrega,'11111111-2222-4333-8444-555555555555');checks++;
  await c2(req({token:'a'.repeat(24)}));
  assert.equal(visto.p_canal,null);assert.equal(visto.p_entrega,null);checks++;
