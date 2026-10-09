@@ -454,21 +454,6 @@ body.trocar-senha .main .wrap>:not(#cardSenha),body.trocar-senha .sidebar .side-
   .publish .actions{flex-wrap:wrap}
   .admin .summary{grid-template-columns:repeat(2,minmax(0,1fr))}
 }
-@media (max-width:640px){
-  #accessList select{flex:1 1 150px;min-width:0}
-  .form-grid,.grid2{grid-template-columns:1fr}
-  .page-head h2,.admin #titulo{font-size:22px;line-height:30px}
-  .page-head .actions{width:100%}
-  #filterStatus{flex:1}
-  .lista-card .card-head{flex-direction:column}
-  .lista-ferramentas{width:100%;justify-content:stretch}
-  .feed{gap:4px}
-  .tile{border-radius:var(--r)}
-  .summary b{font-size:22px;line-height:28px}
-  .admin .login{margin:16px;padding:24px}
-  .backdrop{padding:0;align-items:flex-end}
-  .modal{border-radius:var(--r-xl) var(--r-xl) 0 0;max-height:94vh}
-}
 
 /* ---------- canais: abas do cliente e anúncios ---------- */
 .canais{display:flex;gap:6px;margin-top:12px;flex-wrap:wrap}
@@ -507,10 +492,6 @@ body[data-tema="escuro"] .txtad b{color:#8ab4f8}
 .media .slide-texto .txtad{max-width:520px;border:1px solid var(--border);border-radius:var(--r-lg);height:auto}
 .info .cap a{color:var(--brand-text);text-decoration:underline}
 
-@media (max-width:640px){
-  .adlist{grid-template-columns:1fr}
-}
-
 /* relatório de retornos: existe só na impressão (Salvar como PDF). Cores fixas, para sair
    igual em qualquer tema de agência, inclusive o escuro. */
 #relatorio{display:none}
@@ -520,40 +501,41 @@ body[data-tema="escuro"] .txtad b{color:#8ab4f8}
   body.imprimindo>:not(#relatorio){display:none!important}
   body.imprimindo #relatorio{display:block}
 }
-#relatorio{font-family:Inter,system-ui,sans-serif;color:#1d1d1b;font-size:10pt;line-height:1.45;-webkit-print-color-adjust:exact;print-color-adjust:exact}
-.rel-capa{border-bottom:2px solid #1d1d1b;padding-bottom:10pt;margin-bottom:14pt}
-.rel-capa small{display:block;color:#6b6b66;font-size:8.5pt;text-transform:uppercase;letter-spacing:.06em}
+#relatorio{--p-tinta:#1d1d1b;--p-texto:#4a4a45;--p-texto-2:#6b6b66;--p-texto-3:#8a8a85;--p-fundo:#f1f0ec;--p-fundo-2:#f7f6f3;--p-linha:#deddd8;--p-linha-2:#cfcfca;
+  font-family:Inter,system-ui,sans-serif;color:var(--p-tinta);font-size:10pt;line-height:1.45;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+.rel-capa{border-bottom:2px solid var(--p-tinta);padding-bottom:10pt;margin-bottom:14pt}
+.rel-capa small{display:block;color:var(--p-texto-2);font-size:8.5pt;text-transform:uppercase;letter-spacing:.06em}
 .rel-capa h1{font-size:20pt;line-height:1.2;margin:4pt 0 2pt;font-weight:700}
-.rel-capa p{color:#4a4a45;margin:0}
-.rel-resumo{display:flex;flex-wrap:wrap;gap:6pt 16pt;margin-top:8pt;font-size:9pt;color:#4a4a45}
-.rel-resumo b{color:#1d1d1b;font-size:11pt}
+.rel-capa p{color:var(--p-texto);margin:0}
+.rel-resumo{display:flex;flex-wrap:wrap;gap:6pt 16pt;margin-top:8pt;font-size:9pt;color:var(--p-texto)}
+.rel-resumo b{color:var(--p-tinta);font-size:11pt}
 .rel-mes{margin-top:16pt}
-.rel-mes>h2{font-size:13pt;font-weight:700;margin:0 0 8pt;padding:4pt 8pt;background:#f1f0ec;border-radius:4pt;break-after:avoid}
-.rel-post{border:1px solid #deddd8;border-radius:6pt;padding:9pt 10pt;margin-bottom:9pt;break-inside:avoid}
+.rel-mes>h2{font-size:13pt;font-weight:700;margin:0 0 8pt;padding:4pt 8pt;background:var(--p-fundo);border-radius:4pt;break-after:avoid}
+.rel-post{border:1px solid var(--p-linha);border-radius:6pt;padding:9pt 10pt;margin-bottom:9pt;break-inside:avoid}
 .rel-post-head{display:flex;justify-content:space-between;align-items:flex-start;gap:10pt}
 .rel-post-head h3{font-size:11pt;font-weight:700;margin:0}
-.rel-post-head p{margin:1pt 0 0;color:#6b6b66;font-size:8.5pt}
-.rel-status{flex:none;font-size:8pt;font-weight:600;padding:1.5pt 6pt;border-radius:3pt;border:1px solid #cfcfca;background:#f1f0ec;color:#4a4a45}
+.rel-post-head p{margin:1pt 0 0;color:var(--p-texto-2);font-size:8.5pt}
+.rel-status{flex:none;font-size:8pt;font-weight:600;padding:1.5pt 6pt;border-radius:3pt;border:1px solid var(--p-linha-2);background:var(--p-fundo);color:var(--p-texto)}
 .rel-status.aprovado{background:#eaf3e4;border-color:#bfd8ad;color:#3f6b2a}
 .rel-status.ajuste{background:#fbf0dc;border-color:#ebcf95;color:#8a5a12}
 .rel-thumbs{display:flex;flex-wrap:wrap;gap:5pt;margin-top:7pt}
 .rel-thumbs figure{margin:0;width:26mm}
-.rel-thumbs img{display:block;width:26mm;height:32.5mm;object-fit:cover;border-radius:3pt;background:#f1f0ec;border:1px solid #deddd8}
-.rel-thumbs figcaption{font-size:7.5pt;color:#6b6b66;text-align:center;margin-top:1pt}
-.rel-thumbs .sem-arte{display:flex;align-items:center;justify-content:center;width:26mm;height:32.5mm;border:1px dashed #cfcfca;border-radius:3pt;font-size:7pt;color:#8a8a85;text-align:center;padding:3pt;box-sizing:border-box}
-.rel-aviso{margin-top:6pt;font-size:8.5pt;color:#8a8a85}
+.rel-thumbs img{display:block;width:26mm;height:32.5mm;object-fit:cover;border-radius:3pt;background:var(--p-fundo);border:1px solid var(--p-linha)}
+.rel-thumbs figcaption{font-size:7.5pt;color:var(--p-texto-2);text-align:center;margin-top:1pt}
+.rel-thumbs .sem-arte{display:flex;align-items:center;justify-content:center;width:26mm;height:32.5mm;border:1px dashed var(--p-linha-2);border-radius:3pt;font-size:7pt;color:var(--p-texto-3);text-align:center;padding:3pt;box-sizing:border-box}
+.rel-aviso{margin-top:6pt;font-size:8.5pt;color:var(--p-texto-3)}
 .rel-hist{list-style:none;padding:0;margin:8pt 0 0;display:flex;flex-direction:column;gap:4pt}
-.rel-hist li{padding:4pt 8pt;border-left:3px solid #cfcfca;background:#f7f6f3;border-radius:0 3pt 3pt 0;break-inside:avoid}
+.rel-hist li{padding:4pt 8pt;border-left:3px solid var(--p-linha-2);background:var(--p-fundo-2);border-radius:0 3pt 3pt 0;break-inside:avoid}
 .rel-hist li.aprovado{border-left-color:#5f8f45}
 .rel-hist li.ajuste{border-left-color:#c58a26}
-.rel-hist li.agencia{background:#fff;color:#6b6b66}
-.rel-hist .quem{font-size:8.5pt;color:#6b6b66}
-.rel-hist .quem b{color:#1d1d1b}
+.rel-hist li.agencia{background:#fff;color:var(--p-texto-2)}
+.rel-hist .quem{font-size:8.5pt;color:var(--p-texto-2)}
+.rel-hist .quem b{color:var(--p-tinta)}
 .rel-hist li.aprovado .quem b{color:#3f6b2a}
 .rel-hist li.ajuste .quem b{color:#8a5a12}
 .rel-hist p{margin:2pt 0 0;white-space:pre-line}
-.rel-vazio{color:#8a8a85;font-size:9pt;margin:8pt 0 0}
-.rel-rodape{margin-top:14pt;padding-top:6pt;border-top:1px solid #deddd8;font-size:8pt;color:#8a8a85}
+.rel-vazio{color:var(--p-texto-3);font-size:9pt;margin:8pt 0 0}
+.rel-rodape{margin-top:14pt;padding-top:6pt;border-top:1px solid var(--p-linha);font-size:8pt;color:var(--p-texto-3)}
 
 /* ---------- ferramentas do mês: subir ajustes ---------- */
 .ferramenta .drop{margin-bottom:4px}
@@ -583,11 +565,6 @@ body[data-tema="escuro"] .txtad b{color:#8ab4f8}
 .aviso-cliente input{margin-top:2px}
 .aviso-cliente span{display:flex;flex-direction:column;gap:2px}
 .aviso-cliente small{font-size:12px;font-weight:400;line-height:17px;color:var(--text-2)}
-@media (max-width:640px){
-  .aj{flex-wrap:wrap}
-  .aj-info{flex-basis:100%}
-  .aj-linha select{flex:1 1 100%}
-}
 
 /* escolha da agência, logo depois do login */
 .escolha-lista{display:flex;flex-direction:column;gap:8px}
@@ -596,3 +573,25 @@ body[data-tema="escuro"] .txtad b{color:#8ab4f8}
 .escolha-item b{display:block;font-weight:600}
 .escolha-item small{color:var(--text-2);font-size:12.5px}
 .escolha-tag{flex:none;padding:2px 8px;border-radius:999px;background:var(--surface-2)}
+
+/* ================= CELULAR =================
+   Fica no fim do arquivo para valer sobre as regras de cima. CSS novo entra antes daqui. */
+@media (max-width:640px){
+  #accessList select{flex:1 1 150px;min-width:0}
+  .form-grid,.grid2{grid-template-columns:1fr}
+  .page-head h2,.admin #titulo{font-size:22px;line-height:30px}
+  .page-head .actions{width:100%}
+  #filterStatus{flex:1}
+  .lista-card .card-head{flex-direction:column}
+  .lista-ferramentas{width:100%;justify-content:stretch}
+  .feed{gap:4px}
+  .tile{border-radius:var(--r)}
+  .summary b{font-size:22px;line-height:28px}
+  .admin .login{margin:16px;padding:24px}
+  .backdrop{padding:0;align-items:flex-end}
+  .modal{border-radius:var(--r-xl) var(--r-xl) 0 0;max-height:94vh}
+  .adlist{grid-template-columns:1fr}
+  .aj{flex-wrap:wrap}
+  .aj-info{flex-basis:100%}
+  .aj-linha select{flex:1 1 100%}
+}

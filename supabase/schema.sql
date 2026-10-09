@@ -1,4 +1,4 @@
--- INSTALAÇÃO NOVA APENAS. No projeto atual, multi-agencias.sql, hierarquia.sql, squads.sql, convites.sql, divisoes.sql, gestores.sql, espaco.sql, r2.sql, endurecer.sql, espaco-r2.sql e anuncios.sql já foram aplicadas.
+-- INSTALAÇÃO NOVA APENAS. No projeto atual, as migrações de supabase/historico/ (multi-agencias.sql, hierarquia.sql, squads.sql, convites.sql, divisoes.sql, gestores.sql, espaco.sql, r2.sql, endurecer.sql, espaco-r2.sql e anuncios.sql) já foram aplicadas.
 begin;
 -- =====================================================================
 --  VISTTO — schema do Supabase

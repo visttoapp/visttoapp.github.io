@@ -15,7 +15,7 @@ create function extensions.gen_random_bytes(n integer) returns bytea language sq
 `);
 let schema=fs.readFileSync(new URL('./fixtures/schema-v1.sql',import.meta.url),'utf8').replace('create extension if not exists pgcrypto;','');
 await db.exec(schema);
-await db.exec(fs.readFileSync(new URL('../supabase/multi-agencias.sql',import.meta.url),'utf8'));
+await db.exec(fs.readFileSync(new URL('../supabase/historico/multi-agencias.sql',import.meta.url),'utf8'));
 const ids={owner:'20000000-0000-4000-8000-000000000001',con:'20000000-0000-4000-8000-000000000002',for:'20000000-0000-4000-8000-000000000003',none:'20000000-0000-4000-8000-000000000004'};
 const ag={con:'10000000-0000-4000-8000-000000000001',for:'10000000-0000-4000-8000-000000000002'};
 await db.exec(`insert into auth.users(id,email,email_confirmed_at) values ${Object.entries(ids).map(([k,v])=>`('${v}','${k}@example.test',now())`).join(',')};insert into public.administradores values('${ids.owner}');insert into agencia_usuarios values('${ag.con}','${ids.con}'),('${ag.for}','${ids.for}');`);

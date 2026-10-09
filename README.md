@@ -91,7 +91,7 @@ O bucket é fechado. Quem serve os arquivos é o Worker em `worker/index.js` (`w
 ## Espaço e limpeza
 Em **Espaço e limpeza** (só o administrador geral, porque a conta mostra o servidor inteiro) o painel mostra os dois lugares: as artes novas no R2 (10 GB) e o armazenamento antigo do Supabase (1 GB, que só diminui). Acima de 80% em qualquer um dos dois aparece um aviso no topo do painel. **Apagar arquivos sem dono** varre os dois: no Supabase pela lista do banco, no R2 comparando o inventário do bucket (`/lista` no Worker) com `refs_r2`. **Arquivar mês** apaga as artes daquele mês dos dois lados e mantém post, tema, legenda e histórico.
 
-Duas ações: **apagar arquivos sem dono** remove do servidor o que nenhum post, cliente ou destaque referencia (arquivos da lista `midia_legada` nunca saem), e **arquivar mês** limpa as artes daquele mês, fecha o link do cliente e mantém post, tema, legenda e histórico de aprovação. As duas passam pela função `limpeza`, que confere o nível pelas funções `plano_limpeza` e `arquivar_mes` com o token de quem clicou. Não existe rotina automática: alguém precisa clicar.
+Os arquivos da lista `midia_legada` nunca saem na limpeza. As duas ações passam pela função `limpeza`, que confere o nível pelas funções `plano_limpeza` e `arquivar_mes` com o token de quem clicou. Não existe rotina automática: alguém precisa clicar.
 
 ## Fechaduras
 O número e a data do post são limitados no banco a texto simples e curto, e a página do cliente escapa tudo o que vem do banco. As duas páginas carregam com uma política de conteúdo (CSP) que só deixa rodar script do próprio site. O código de primeiro acesso conta a tentativa no banco antes de conferir, numa operação só, então pedidos simultâneos não furam o limite de 5, e o código vale 48 horas. O Storage do Supabase não aceita mais envio novo: tudo que entra agora vai para o R2. O Worker responde a pedido de trecho (Range), que é o que o Safari do iPhone exige para tocar vídeo.
@@ -104,7 +104,7 @@ O número e a data do post são limitados no banco a texto simples e curto, e a 
 - A função `acessos` valida a sessão e o nível de quem cadastra antes de criar a conta. Ambas usam `verify_jwt=false` (ver `supabase/config.toml`); a chave privilegiada fica só no servidor.
 
 ### Banco
-No projeto em uso, `multi-agencias.sql`, `hierarquia.sql`, `squads.sql`, `convites.sql`, `divisoes.sql`, `gestores.sql`, `espaco.sql`, `r2.sql`, `endurecer.sql`, `espaco-r2.sql` e `anuncios.sql` já foram aplicadas. **Não execute de novo.** `schema.sql` é a instalação completa para um banco novo.
+As migrações já aplicadas no projeto em uso ficam em `supabase/historico/` (`multi-agencias.sql` até `anuncios.sql`, nessa ordem). **Não execute de novo.** `schema.sql` é a instalação completa para um banco novo. Migração nova, ainda por aplicar, fica solta em `supabase/` até ser rodada no SQL Editor.
 
 Instalação nova: execute `schema.sql`, crie a primeira conta no Supabase Auth, cadastre o UUID em `administradores`, ajuste os nomes em `agencias`, configure `js/config.js` com a URL e a publishable key, publique as funções `cliente`, `acessos`, `primeiro-acesso`, `midia` e `limpeza` e configure a URL do site no Auth.
 
