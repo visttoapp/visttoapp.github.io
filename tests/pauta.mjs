@@ -15,8 +15,8 @@ create function extensions.gen_random_bytes(n integer) returns bytea language sq
 const rd = f => fs.readFileSync(new URL(f, import.meta.url), 'utf8');
 await db.exec(rd('./fixtures/schema-v1.sql').replace('create extension if not exists pgcrypto;', ''));
 for (const f of ['multi-agencias', 'hierarquia', 'squads', 'convites', 'divisoes', 'gestores', 'espaco', 'r2', 'endurecer', 'espaco-r2', 'anuncios']) await db.exec(rd(`../supabase/historico/${f}.sql`));
-await db.exec(rd('../supabase/pauta.sql'));
-await db.exec(rd('../supabase/pauta.sql'));   // rodar de novo não pode quebrar
+await db.exec(rd('../supabase/pauta-e-linkedin.sql'));
+await db.exec(rd('../supabase/pauta-e-linkedin.sql'));   // rodar de novo não pode quebrar
 
 const A = { a: '10000000-0000-4000-8000-000000000001', b: '10000000-0000-4000-8000-000000000002' };
 const P = { dono: ['b', 'dono'], head: ['b', 'head'], des: ['b', 'designer'], outra: ['a', 'designer'], fora: null };
@@ -72,6 +72,24 @@ assert.equal((await rows('select status from posts where id=$1', [p1]))[0].statu
 await q('update posts set interno=null where id=$1', [p4]);
 assert.deepEqual(await nums(), ['01', '02', '04']); ok();
 
+/* ---------- LinkedIn no lugar de Meta Ads e Google Ads ---------- */
+const li = (await rows(`insert into meses(cliente_id,ano_mes,titulo,canal,publicado) values($1,'2026-10','LinkedIn outubro','linkedin',true) returning id`, [cli]))[0].id;
+await assert.rejects(q(`insert into meses(cliente_id,ano_mes,titulo,canal) values($1,'2026-10','De novo','linkedin')`, [cli])); ok();   // um por mês
+await q(`insert into posts(mes_id,numero,titulo,tipo) values($1,'01','Post no LinkedIn','image')`, [li]);
+assert.equal((await as('des', () => rows(`select count(*)::int n from meses where canal='linkedin'`)))[0].n, 1); ok();   // a equipe toda vê
+const meta = (await rows(`insert into meses(cliente_id,ano_mes,titulo,canal,publicado) values($1,'2026-10','Campanha antiga','meta',true) returning id`, [cli]))[0].id;
+const pm = (await rows(`insert into posts(mes_id,numero,titulo,tipo) values($1,'01','Anúncio','image') returning id`, [meta]))[0].id;
+const gm = async (...a) => (await rows(`select get_mes($1,$2,$3,$4) j`, [TOKEN, ...a]))[0].j;
+assert.deepEqual((await gm(null, null, null)).canais.map(c => c.canal), ['instagram', 'linkedin']); ok();   // Meta fica de fora
+let j = await gm(null, 'linkedin', null);
+assert.equal(j.canal, 'linkedin'); ok();
+assert.deepEqual(j.posts.map(p => p.titulo), ['Post no LinkedIn']); ok();
+assert.equal((await gm(null, null, li)).mes.titulo, 'LinkedIn outubro'); ok();
+assert.equal((await gm(null, 'meta', null)).canal, 'instagram'); ok();          // canal antigo vira o feed
+assert.notEqual((await gm(null, null, meta)).mes?.titulo, 'Campanha antiga'); ok();
+await assert.rejects(q(`select registrar_aprovacao($1,$2,'aprovado')`, [TOKEN, pm]), /token inválido/); ok();
+assert.equal((await rows('select count(*)::int n from meses where canal=$1', ['meta']))[0].n, 1); ok();   // nada apagado
+
 /* ---------- membros da agência ---------- */
 const membros = async who => (await as(who, () => rows('select membros_agencia($1) m', [A.b])))[0].m;
 const m = await membros('des');
@@ -82,4 +100,4 @@ assert.deepEqual(await membros('fora'), []); ok();
 await assert.rejects(db.exec(`set role anon; select membros_agencia('${A.b}')`)); ok();
 await db.exec('reset role');
 
-console.log('PASS:', checks, 'checks da pauta: responsável da agência, revisão interna só liberada por Head+, gaveta fora do link e membros por agência.');
+console.log('PASS:', checks, 'checks da pauta: responsável da agência, revisão interna só liberada por Head+, gaveta fora do link, membros por agência e LinkedIn no lugar dos anúncios.');

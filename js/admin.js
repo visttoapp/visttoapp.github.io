@@ -6,16 +6,9 @@
   const STATUS = { pendente: 'Aguardando', aprovado: 'Aprovado', ajuste: 'Ajuste' };
   const TIPO = { carousel: 'Carrossel', image: 'Imagem', reel: 'Reel', texto: 'Texto' };
   const TIPO_FEED = { carousel: 'Carrossel', image: 'Imagem única', reel: 'Reel (vídeo)' };
-  const TIPO_ADS = { image: 'Imagem única', carousel: 'Carrossel', reel: 'Vídeo', texto: 'Só texto (pesquisa)' };
-  const CANAIS = { instagram: 'Instagram · feed', meta: 'Meta Ads', google: 'Google Ads' };
-  const OBJETIVOS = {
-    meta: ['Reconhecimento', 'Tráfego', 'Engajamento', 'Cadastros', 'Mensagens', 'Vendas', 'Promoção de app'],
-    google: ['Pesquisa', 'Performance Max', 'Display', 'Demand Gen', 'Vídeo (YouTube)', 'Shopping']
-  };
-  const CTAS = {
-    meta: ['Saiba mais', 'Comprar agora', 'Cadastre-se', 'Enviar mensagem', 'Chamar no WhatsApp', 'Reservar', 'Baixar', 'Ver cardápio'],
-    google: ['Saiba mais', 'Comprar agora', 'Peça um orçamento', 'Ligar agora', 'Inscreva-se', 'Baixar']
-  };
+  const TIPO_LINKEDIN = { image: 'Imagem', carousel: 'Carrossel (várias imagens)', reel: 'Vídeo' };
+  // Canais de posts. Meta Ads e Google Ads saíram: as campanhas antigas ficam no banco, fora do painel.
+  const CANAIS = { instagram: 'Instagram', linkedin: 'LinkedIn' };
   const PAPEIS = { dono: 'Dono', socio: 'Sócio', head: 'Head', designer: 'Designer', editor_video: 'Editor de vídeo', social_media: 'Social media', gestor_trafego: 'Gestor de tráfego' };
   const NIVEL = { dono: 3, socio: 3, head: 2, designer: 1, editor_video: 1, social_media: 1, gestor_trafego: 1 };
   const COLS = 'id,agencia_id,squad_id,slug,nome,handle,bio,avatar_url,created_at';
@@ -107,7 +100,7 @@
   /* ---------- estado ---------- */
   let agencias = [], agencia = null, superadmin = false, nivel = 0, squads = [];
   let clientes = [], meses = [], todosMeses = [], posts = [], cliente = null, mes = null;
-  let canal = 'instagram', podeAds = false;
+  let canal = 'instagram';
   let files = [];          // arquivos do post em edição [{file, url, kind}]
   let editing = null;      // post em edição (id) ou null
   let destFiles = [];      // {nome, url}
@@ -166,9 +159,8 @@
     $('cSquad').innerHTML=(nivel>=3?'<option value="">Sem squad (só donos e sócios veem)</option>':'')+squadOpts;
     $('accessSquad').innerHTML=(nivel>=3?'<option value="">Sem squad</option>':'')+squadOpts;
     $('accessSquad').closest('.field').hidden=!agencia.usa_squads||(nivel<3&&!squads.length);
-    podeAds = superadmin || nivel >= 2 || agencia.papel === 'gestor_trafego';
-    if(!podeAds) canal='instagram';
-    $('boxCanal').hidden=!podeAds; $('selCanal').value=canal; rotularCanal();
+    if(!CANAIS[canal]) canal='instagram';
+    $('selCanal').value=canal; rotularCanal();
     $('btnAccess').hidden=nivel<2; $('btnEspaco').hidden=!superadmin; $('btnNovoCliente').hidden=nivel<2||(nivel<3&&agencia.usa_squads&&!squads.length); $('cardLink').hidden=nivel<2;
     const comSquads=!!agencia.usa_squads;
     $('squadsBox').hidden=nivel<3||!comSquads;
@@ -334,7 +326,7 @@
     ]);
     if (token) c.token = token;
     if (cliente !== c) return;   // trocaram de cliente enquanto carregava
-    todosMeses = data || [];
+    todosMeses = (data || []).filter(m => CANAIS[m.canal || 'instagram']);
     // quantos posts em cada etapa, por mês: um pedido só, para as entregas
     if (todosMeses.length) {
       const { data: st } = await sb.from('posts').select('mes_id,status' + (temPauta ? ',interno' : '')).in('mes_id', todosMeses.map(m => m.id));
@@ -347,41 +339,20 @@
     rotularCanal();
     meses = todosMeses.filter(m => (m.canal || 'instagram') === canal);
     $('selMes').innerHTML = meses.map(m => `<option value="${m.id}">${esc(m.titulo)}${m.arquivado_em ? ' (arquivado)' : ''}${m.publicado ? '' : ' · rascunho'}</option>`).join('')
-      || `<option value="">— ${canal === 'instagram' ? 'crie um mês' : 'crie uma campanha'} —</option>`;
+      || '<option value="">— crie um mês —</option>';
     if (mesPreferido && meses.some(m => m.id === mesPreferido)) $('selMes').value = mesPreferido;
     mesPreferido = null;
     await selectMes($('selMes').value);
   }
-  // Troca a linguagem da tela inteira: mês/post no feed, campanha/anúncio nos canais de mídia paga.
+  // Feed e LinkedIn funcionam igual: mês, número, tema, legenda e artes. Muda o nome e os formatos.
   function rotularCanal() {
-    const ads = canal !== 'instagram';
     document.body.dataset.canal = canal;
-    $('lblMes').textContent = ads ? 'Campanha' : 'Mês';
-    $('eyebrow').textContent = ads ? CANAIS[canal] + ' · aprovação de criativos' : 'Aprovação de conteúdo';
-    $('listaTitle').textContent = ads ? 'Anúncios da campanha' : 'Posts do mês';
-    $('colTema').textContent = ads ? 'Anúncio' : 'Tema';
-    $('fldTema').hidden = ads;
-    ['fldConjunto', 'fldPublico', 'fldDescricao', 'fldCta', 'fldDestino'].forEach(i => $(i).hidden = !ads);
-    $('lblConjunto').textContent = canal === 'google' ? 'Grupo de anúncios' : 'Conjunto de anúncios';
-    $('lblPublico').textContent = canal === 'google' ? 'Palavras-chave ou segmentação' : 'Público';
-    $('lblNumero').textContent = ads ? 'Nº' : 'Número';
-    $('lblData').textContent = ads ? 'Início previsto' : 'Data prevista';
-    $('lblTitulo').innerHTML = ads ? 'Título do anúncio' : 'Título <span class="hint">(use &lt;em&gt;palavra&lt;/em&gt; para destacar)</span>';
-    $('lblLegenda').textContent = ads ? 'Texto principal' : 'Legenda';
-    $('postFormHint').textContent = ads
-      ? 'Um anúncio por criativo, dentro do conjunto a que ele pertence. O cliente aprova cada um pelo link.'
-      : 'Envie as lâminas na ordem do carrossel. Para reel, envie o .mp4 e uma imagem de capa.';
-    const tipos = ads ? TIPO_ADS : TIPO_FEED;
+    if (!vendoGeral) $('eyebrow').textContent = `Aprovação de conteúdo · ${CANAIS[canal]}`;
+    const tipos = canal === 'linkedin' ? TIPO_LINKEDIN : TIPO_FEED;
     const atual = $('pTipo').value;
     $('pTipo').innerHTML = Object.entries(tipos).map(([k, v]) => `<option value="${k}">${v}</option>`).join('');
     $('pTipo').value = tipos[atual] ? atual : Object.keys(tipos)[0];
-    $('mObjetivo').innerHTML = (OBJETIVOS[canal] || []).map(o => `<option value="${esc(o)}">${esc(o)}</option>`).join('');
-    $('pCta').innerHTML = '<option value="">Sem botão</option>' + (CTAS[canal] || []).map(o => `<option value="${esc(o)}">${esc(o)}</option>`).join('');
-    ajustarArquivos();
   }
-  // Anúncio de pesquisa do Google é só texto: some a área de arquivos.
-  function ajustarArquivos() { $('fldArquivos').hidden = $('pTipo').value === 'texto'; }
-  $('pTipo').onchange = ajustarArquivos;
   $('selCanal').onchange = async e => { canal = e.target.value; if (vendoGeral) return; verEquipe(false); fecharFerramentas(); $('cardMes').hidden = true; $('cardCliente').hidden = true; await aplicarCanal(); };
   $('selMes').onchange = e => { verEquipe(false); fecharFerramentas(); selectMes(e.target.value); };
 
@@ -419,14 +390,9 @@
     const base = new URL('c',location.href).href;
     const alvo = !mes ? '' : canal === 'instagram' ? '&m=' + mes.ano_mes : '&e=' + mes.id;
     $('linkCliente').textContent = cliente && cliente.token ? `${base}#t=${cliente.token}${alvo}` : '—';
-    const ap = posts.filter(p => p.status === 'aprovado').length, aj = posts.filter(p => p.status === 'ajuste').length;
-    const pend = posts.filter(p => p.status === 'pendente').length;
-    $('summary').innerHTML = `<div><b>${posts.length}</b><span>${canal === 'instagram' ? 'posts no mês' : 'anúncios na campanha'}</span></div><div><b>${pend}</b><span>aguardando</span></div><div><b>${ap}</b><span>aprovados</span></div><div><b>${aj}</b><span>ajustes</span></div>`;
     if (!mes) fecharPost();
     $('btnNovoPost').hidden = !mes;
-    $('txtNovoPost').textContent = canal === 'instagram' ? 'Novo post' : 'Novo anúncio';
     $('cardLink').hidden = nivel < 2 || !cliente;
-    $('summary').hidden = !mes;
   }
   $('chkPub').onchange = async e => {
     if (!mes) return;
@@ -502,38 +468,28 @@
   $('btnNovoMes').onclick = () => {
     verEquipe(false); fecharFerramentas();
     if (!cliente) return aviso('Crie um cliente primeiro.', 'erro');
-    const ads = canal !== 'instagram';
-    const d = new Date(); if (!ads) d.setMonth(d.getMonth() + 1);
+    const d = new Date(); d.setMonth(d.getMonth() + 1);
     $('mAnoMes').value = `${d.getFullYear()}-${pad(d.getMonth() + 1)}`;
-    $('mTitulo').value = ads ? '' : d.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' }).replace(/^\w/, c => c.toUpperCase()).replace(' de ', ' ');
-    $('mTitulo').placeholder = ads ? 'Black Friday · conversão' : 'Outubro 2026';
-    $('mesFormTitle').textContent = ads ? 'Nova campanha' : 'Novo mês';
-    $('mesFormHint').textContent = ads
-      ? 'A campanha junta os anúncios que o cliente vai aprovar, na mesma divisão do gerenciador.'
-      : 'Cada mês reúne os posts que o cliente vai aprovar.';
-    $('lblAnoMes').textContent = ads ? 'Mês de referência' : 'Ano e mês';
-    $('lblTituloMes').textContent = ads ? 'Nome da campanha' : 'Título';
-    $('lblIntroMes').innerHTML = (ads ? 'Observações' : 'Introdução') + ' <span class="hint">(opcional)</span>';
-    $('fldObjetivo').hidden = !ads;
+    $('mTitulo').value = d.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' }).replace(/^\w/, c => c.toUpperCase()).replace(' de ', ' ');
+    $('mesFormTitle').textContent = `Novo mês · ${CANAIS[canal]}`;
+    $('mesFormHint').textContent = `Cada mês reúne os posts ${canal === 'linkedin' ? 'do LinkedIn' : 'do feed'} que o cliente vai aprovar.`;
     $('mIntro').value = ''; $('msgMes').textContent = ''; $('cardMes').hidden = false; mostrar('cardMes');
   };
   $('btnFecharMes').onclick = () => $('cardMes').hidden = true;
   $('btnExcluirMes').onclick = async () => {
     if (!mes || nivel < 2) return;
-    const n = posts.length, ads = canal !== 'instagram';
-    const item = ads ? 'anúncio' : 'post';
-    if (!await confirmar(`${ads ? 'A campanha' : 'O mês'} "${mes.titulo}" de ${cliente.nome}${n ? ` e ${n > 1 ? `os ${n} ${item}s` : `o ${item}`} ${ads ? 'dela' : 'dele'}` : ''} vão embora. Não dá para desfazer.`,
-      { titulo: ads ? 'Excluir a campanha?' : 'Excluir o mês?', ok: 'Excluir', perigo: true })) return;
+    const n = posts.length;
+    if (!await confirmar(`O mês "${mes.titulo}" de ${cliente.nome}${n ? ` e ${n > 1 ? `os ${n} posts` : 'o post'} dele` : ''} vão embora. Não dá para desfazer.`,
+      { titulo: 'Excluir o mês?', ok: 'Excluir', perigo: true })) return;
     const { data, error } = await sb.from('meses').delete().eq('id', mes.id).select('id');
     if (error || !data?.length) return aviso(error?.message || 'Você não tem permissão para excluir este mês.', 'erro');
     await selectCliente(cliente.id);
   };
   $('btnSalvarMes').onclick = async () => {
-    const ads = canal !== 'instagram';
     const row = { cliente_id: cliente.id, canal, ano_mes: $('mAnoMes').value.trim(), titulo: $('mTitulo').value.trim(),
-      intro: $('mIntro').value.trim() || null, objetivo: ads ? ($('mObjetivo').value || null) : null };
+      intro: $('mIntro').value.trim() || null };
     if (!/^\d{4}-\d{2}$/.test(row.ano_mes) || !row.titulo) {
-      $('msgMes').textContent = ads ? 'Dê um nome à campanha e use o formato 2026-10 no mês.' : 'Use o formato 2026-10 e um título.';
+      $('msgMes').textContent = 'Use o formato 2026-10 e um título.';
       $('msgMes').className = 'msg err'; return;
     }
     const { data, error } = await sb.from('meses').insert(row).select().single();
@@ -606,18 +562,14 @@
   }
   function limparPost() {
     editing = null; files = []; renderThumbs();
-    ['pNumero', 'pData', 'pTema', 'pTitulo', 'pLegenda', 'pConjunto', 'pPublico', 'pDescricao', 'pDestino'].forEach(id => $(id).value = '');
-    const ads = canal !== 'instagram';
-    $('pCta').value = '';
-    $('pTipo').value = ads ? 'image' : 'carousel';
+    ['pNumero', 'pData', 'pTema', 'pTitulo', 'pLegenda'].forEach(id => $(id).value = '');
+    $('pTipo').value = canal === 'linkedin' ? 'image' : 'carousel';
     $('pNumero').value = pad(posts.length + 1);
-    // o próximo anúncio quase sempre é do mesmo conjunto: já vem preenchido
-    if (ads && posts.length) $('pConjunto').value = posts[posts.length - 1].conjunto || '';
-    $('postFormTitle').textContent = ads ? 'Novo anúncio' : 'Novo post';
+    $('postFormTitle').textContent = 'Novo post';
     $('pResponsavel').value = ''; $('pInterno').value = '';
     [...$('pInterno').options].forEach(o => o.disabled = false);
     $('btnExcluirPost').hidden = true;
-    $('msgPost').textContent = ''; ajustarArquivos();
+    $('msgPost').textContent = '';
   }
   // O formulário só aparece quando alguém vai criar ou editar; o resto do tempo a lista fica sozinha.
   function abrirPost(p) {
@@ -632,42 +584,32 @@
   $('btnFecharPost').onclick = fecharPost;
   $('btnExcluirPost').onclick = async () => {
     const p = posts.find(x => x.id === editing); if (!p || nivel < 2) return;
-    const ads = canal !== 'instagram';
-    if (!await confirmar(`${ads ? 'O anúncio' : 'O post'} ${p.numero || ''} e o histórico de aprovação ${ads ? 'dele' : 'dele'} vão embora. Não dá para desfazer.`, { titulo: ads ? 'Excluir este anúncio?' : 'Excluir este post?', ok: 'Excluir', perigo: true })) return;
+    if (!await confirmar(`O post ${p.numero || ''} e o histórico de aprovação dele vão embora. Não dá para desfazer.`, { titulo: 'Excluir este post?', ok: 'Excluir', perigo: true })) return;
     const { data, error } = await sb.from('posts').delete().eq('id', p.id).select('id');
     if (error || !data?.length) return aviso(error?.message || 'Você não tem permissão para excluir.', 'erro');
-    fecharPost(); aviso(`${ads ? 'Anúncio' : 'Post'} ${p.numero || ''} excluído.`);
+    fecharPost(); aviso(`Post ${p.numero || ''} excluído.`);
     await selectMes(mes.id);
   };
 
   $('btnSalvarPost').onclick = async () => {
     if (!mes) return;
-    const ads = canal !== 'instagram';
     const tipo = $('pTipo').value;
     const imgs = files.filter(f => f.kind === 'image').map(f => f.url);
     const vid = files.find(f => f.kind === 'video');
-    const destino = $('pDestino').value.trim();
     const erro = t => { $('msgPost').textContent = t; $('msgPost').className = 'msg err'; };
-    if (tipo === 'reel' && !vid) return erro(ads ? 'O anúncio em vídeo precisa de um .mp4.' : 'Reel precisa de um .mp4.');
-    if (tipo !== 'reel' && tipo !== 'texto' && !imgs.length) return erro('Envie pelo menos uma imagem.');
-    if (tipo === 'texto' && !$('pTitulo').value.trim()) return erro('O anúncio de texto precisa de um título.');
-    if (ads && destino && !/^https:\/\/\S+$/.test(destino)) return erro('O endereço precisa começar com https:// e não pode ter espaço.');
+    if (tipo === 'reel' && !vid) return erro(canal === 'linkedin' ? 'Vídeo precisa de um .mp4.' : 'Reel precisa de um .mp4.');
+    if (tipo !== 'reel' && !imgs.length) return erro('Envie pelo menos uma imagem.');
     const row = {
       mes_id: mes.id, numero: $('pNumero').value.trim() || pad(posts.length + 1), data: $('pData').value.trim() || null,
-      tema: ads ? null : $('pTema').value.trim(), titulo: $('pTitulo').value.trim(), tipo, legenda: $('pLegenda').value.trim(),
-      conjunto: ads ? ($('pConjunto').value.trim() || null) : null,
-      publico: ads ? ($('pPublico').value.trim() || null) : null,
-      descricao: ads ? ($('pDescricao').value.trim() || null) : null,
-      cta: ads ? ($('pCta').value || null) : null,
-      destino: ads ? (destino || null) : null,
-      slides: tipo === 'reel' || tipo === 'texto' ? [] : imgs, video_url: vid ? vid.url : null, capa_url: tipo === 'reel' ? (imgs[0] || null) : null
+      tema: $('pTema').value.trim(), titulo: $('pTitulo').value.trim(), tipo, legenda: $('pLegenda').value.trim(),
+      slides: tipo === 'reel' ? [] : imgs, video_url: vid ? vid.url : null, capa_url: tipo === 'reel' ? (imgs[0] || null) : null
     };
     if (temPauta) { row.responsavel = $('pResponsavel').value || null; row.interno = $('pInterno').value || null; }
     if (!editing) row.ordem = posts.length;
     const q = editing ? sb.from('posts').update(row).eq('id', editing) : sb.from('posts').insert(row);
     const { error } = await q;
     if (error) { $('msgPost').textContent = error.message; $('msgPost').className = 'msg err'; return; }
-    aviso(`${ads ? 'Anúncio' : 'Post'} ${row.numero} salvo.`);
+    aviso(`Post ${row.numero} salvo.`);
     fecharPost();
     await selectMes(mes.id);
   };
@@ -814,7 +756,7 @@
         <input data-numero="${i}" value="${esc(p.numero)}" aria-label="Número" size="3">
         <input data-tema="${i}" value="${esc(p.tema)}" aria-label="Tema" placeholder="Tema">
         <input data-data="${i}" value="${esc(p.data || '')}" aria-label="Dia da postagem" placeholder="dia" size="5">
-        <select data-tipo="${i}" aria-label="Formato">${Object.entries(canal === 'instagram' ? TIPO_FEED : TIPO_ADS).map(([k, v]) => `<option value="${k}" ${k === p.tipo ? 'selected' : ''}>${v}</option>`).join('')}</select>
+        <select data-tipo="${i}" aria-label="Formato">${Object.entries(canal === 'linkedin' ? TIPO_LINKEDIN : TIPO_FEED).map(([k, v]) => `<option value="${k}" ${k === p.tipo ? 'selected' : ''}>${v}</option>`).join('')}</select>
       </div>
       <div class="imp-info">
         <small>${p.arquivos.length} arquivo(s) · ${esc(p.origem)}</small>
@@ -851,7 +793,7 @@
         const tipo = vid ? 'reel' : p.tipo === 'reel' ? 'image' : p.tipo;
         const { error } = await sb.from('posts').insert({
           mes_id: mes.id, ordem: posts.length + criados, numero: String(p.numero || '').trim() || null,
-          data: (p.data || '').trim() || null, tema: canal === 'instagram' ? (p.tema || '').trim() : null, titulo: (p.titulo || p.tema || '').trim(),
+          data: (p.data || '').trim() || null, tema: (p.tema || '').trim(), titulo: (p.titulo || p.tema || '').trim(),
           tipo, legenda: (p.legenda || '').trim(), slides: tipo === 'reel' ? [] : imgs,
           video_url: vid ? vid.url : null, capa_url: tipo === 'reel' ? (imgs[0] || null) : null
         });
@@ -876,7 +818,7 @@
   // também tema, título, legenda e data; sem ele, o texto fica. O histórico fica sempre, e as artes
   // antigas viram "sem dono" e saem na limpeza.
   let ajustes = [], previas = [], roteiroAj = null;
-  const rotuloPost = p => `${canal === 'instagram' ? 'Post' : 'Anúncio'} ${p.numero || '—'}${(p.tema || semTags(p.titulo)) ? ' · ' + (p.tema || semTags(p.titulo)) : ''}`;
+  const rotuloPost = p => `Post ${p.numero || '—'}${(p.tema || semTags(p.titulo)) ? ' · ' + (p.tema || semTags(p.titulo)) : ''}`;
   function limparPrevias() { previas.forEach(u => URL.revokeObjectURL(u)); previas = []; }
   function previa(arquivo) { const u = URL.createObjectURL(arquivo); previas.push(u); return u; }
   $('btnAjustes').onclick = alternar('cardAjustes', () => {
@@ -933,7 +875,7 @@
   // o texto segue o post que recebe, pelo número dele no roteiro
   function textoDe(a) {
     const p = posts.find(x => x.id === a.alvo);
-    return PASTA.textoAjuste(p && PASTA.blocoDe(roteiroAj, p.numero), p, canal !== 'instagram');
+    return PASTA.textoAjuste(p && PASTA.blocoDe(roteiroAj, p.numero), p, false);
   }
   const filaAjustes = () => ajustes.filter(a => a.usar && a.alvo && planoDe(a).ok && (a.grupo || textoDe(a).nomes.length));
   function renderAjustes() {
@@ -1080,9 +1022,8 @@
   const semTags = t => String(t || '').replace(/<[^>]+>/g, '');
   const dataHora = d => new Date(d).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' });
   $('btnExportar').onclick = alternar('cardExportar', () => {
-    const ads = canal !== 'instagram';
-    $('expAlcance').innerHTML = (mes ? `<option value="mes">${ads ? 'Esta campanha' : 'Este mês'}: ${esc(mes.titulo)}</option>` : '')
-      + `<option value="cliente">Tudo de ${esc(cliente.nome)} (todos os meses${podeAds ? ' e campanhas' : ''})</option>`;
+    $('expAlcance').innerHTML = (mes ? `<option value="mes">Este mês: ${esc(mes.titulo)}</option>` : '')
+      + `<option value="cliente">Tudo de ${esc(cliente.nome)} (todos os meses)</option>`;
     $('msgExportar').textContent = '';
   });
   $('btnFecharExportar').onclick = fecharFerramentas;
@@ -1098,10 +1039,10 @@
   };
 
   async function gerarRelatorio(alcance, filtro) {
-    const ordemCanal = { instagram: 0, meta: 1, google: 2 };
+    const ordemCanal = { instagram: 0, linkedin: 1 };
     const lista = (alcance === 'mes' && mes ? [mes] : [...todosMeses])
       .sort((a, b) => (ordemCanal[a.canal || 'instagram'] - ordemCanal[b.canal || 'instagram']) || b.ano_mes.localeCompare(a.ano_mes));
-    if (!lista.length) throw new Error('este cliente ainda não tem mês nem campanha.');
+    if (!lista.length) throw new Error('este cliente ainda não tem mês.');
     const todos = await run(sb.from('posts').select('*, aprovacoes(*)').in('mes_id', lista.map(m => m.id)).order('ordem'));
     const doCliente = p => p.aprovacoes.some(a => (a.origem || 'cliente') === 'cliente');
     const passa = p => filtro === 'todos' || (filtro === 'ajuste' ? p.status === 'ajuste' : doCliente(p));
@@ -1120,7 +1061,7 @@
     const postsTodos = grupos.flatMap(g => g.posts);
     const conta = s => postsTodos.filter(p => p.status === s).length;
     const comentarios = postsTodos.reduce((n, p) => n + p.aprovacoes.filter(a => a.acao !== 'aprovado' && (a.origem || 'cliente') === 'cliente').length, 0);
-    const escopo = alcance === 'mes' && mes ? mes.titulo : 'Todos os meses' + (podeAds ? ' e campanhas' : '');
+    const escopo = alcance === 'mes' && mes ? mes.titulo : 'Todos os meses';
     const filtroTxt = { retorno: 'posts com retorno do cliente', ajuste: 'posts com ajuste pedido', todos: 'todos os posts' }[filtro];
 
     const thumbs = (g, p) => {
@@ -1142,12 +1083,11 @@
         }).join('')}</ol>`
       : '<p class="rel-vazio">Sem retorno do cliente até agora.</p>';
     const bloco = (g, p) => {
-      const ads = (g.mes.canal || 'instagram') !== 'instagram';
-      const nome = ads ? semTags(p.titulo) || 'Anúncio' : p.tema || semTags(p.titulo) || 'Post';
+      const nome = p.tema || semTags(p.titulo) || 'Post';
       const detalhes = [TIPO[p.tipo] + (p.tipo === 'carousel' && (p.slides || []).length > 1 ? ` · ${p.slides.length} lâminas` : ''),
-        p.data ? (ads ? 'início ' : 'dia ') + p.data : '', ads ? p.conjunto : semTags(p.titulo) !== nome ? semTags(p.titulo) : ''].filter(Boolean);
+        p.data ? 'dia ' + p.data : '', semTags(p.titulo) !== nome ? semTags(p.titulo) : ''].filter(Boolean);
       return `<article class="rel-post">
-        <div class="rel-post-head"><div><h3>${ads ? 'Anúncio' : 'Post'} ${esc(p.numero || '')} · ${esc(nome)}</h3><p>${detalhes.map(esc).join(' · ')}</p></div><span class="rel-status ${esc(p.status)}">${STATUS[p.status] || esc(p.status)}</span></div>
+        <div class="rel-post-head"><div><h3>Post ${esc(p.numero || '')} · ${esc(nome)}</h3><p>${detalhes.map(esc).join(' · ')}</p></div><span class="rel-status ${esc(p.status)}">${STATUS[p.status] || esc(p.status)}</span></div>
         ${thumbs(g, p)}${historico(p)}</article>`;
     };
 
@@ -1186,7 +1126,7 @@
   const avatar = id => id ? `<span class="av" title="${esc(nomeMembro(id))}">${esc(iniciais(nomeMembro(id)))}</span>` : '';
   const etiqueta = p => `<span class="pill ${PAINEL.etapa(p)}">${ETAPAS[PAINEL.etapa(p)] || STATUS[p.status]}</span>`;
   const filtrados = () => posts.filter(p => !$('filterStatus').value || PAINEL.etapa(p) === $('filterStatus').value);
-  const nomePost = p => canal === 'instagram' ? (p.tema || semTags(p.titulo)) : semTags(p.titulo) || 'Anúncio';
+  const nomePost = p => p.tema || semTags(p.titulo);
 
   function renderLista() {
     $('tabelaPosts').hidden = vista === 'quadro';
@@ -1199,7 +1139,7 @@
       return `<tr class="st-${PAINEL.etapa(p)}">
         <td>${cover && MEDIA.url(cover) ? `<img src="${esc(MEDIA.url(cover))}" alt="">` : '<span class="sem-capa"></span>'}</td>
         <td>${esc(p.numero)}<br><small>${esc(p.data || '')}</small></td>
-        <td>${esc(canal === 'instagram' ? p.tema : semTags(p.titulo))}<br><small>${esc(canal === 'instagram' ? semTags(p.titulo).slice(0, 60) : (p.conjunto || 'sem conjunto'))}</small>${p.responsavel ? `<div class="resp">${avatar(p.responsavel)}<small>${esc(nomeMembro(p.responsavel))}</small></div>` : ''}</td>
+        <td>${esc(p.tema)}<br><small>${esc(semTags(p.titulo).slice(0, 60))}</small>${p.responsavel ? `<div class="resp">${avatar(p.responsavel)}<small>${esc(nomeMembro(p.responsavel))}</small></div>` : ''}</td>
         <td>${TIPO[p.tipo]}${p.slides && p.slides.length > 1 ? ` · ${p.slides.length}` : ''}</td>
         <td>${etiqueta(p)}</td>
         <td>${ret.length ? `<ul class="hist">${ret.map(a => `<li class="${a.acao}"><b>${a.acao === 'aprovado' ? 'Aprovado' : a.acao === 'ajuste' ? 'Ajuste' : 'Comentário'}</b>${a.autor ? ' · ' + esc(a.autor) : ''} · ${new Date(a.created_at).toLocaleDateString('pt-BR')}${a.comentario ? `<p>${esc(a.comentario)}</p>` : ''}</li>`).join('')}</ul>` : '<small>—</small>'}</td>
@@ -1223,8 +1163,8 @@
     $('lista').querySelectorAll('[data-down]').forEach(b => b.onclick = () => move(b.dataset.down, 1));
   }
   function vazio() {
-    return mes ? (canal === 'instagram' ? 'Nenhum post neste filtro ainda.' : 'Nenhum anúncio neste filtro ainda.')
-      : cliente ? (canal === 'instagram' ? 'Crie um mês para começar a subir posts.' : 'Crie uma campanha para começar a subir criativos.')
+    return mes ? 'Nenhum post neste filtro ainda.'
+      : cliente ? `Crie um mês ${canal === 'linkedin' ? 'de LinkedIn ' : ''}para começar a subir posts.`
       : (nivel < 2 && !clientes.length ? 'Nenhum cliente liberado para você ainda. Fale com o Head do seu squad.' : 'Escolha ou crie um cliente para começar.');
   }
   // Os botões são os mesmos na lista e no quadro.
@@ -1287,7 +1227,6 @@
     const el = $('entregas');
     el.hidden = vendoGeral || !cliente;
     if (el.hidden) return;
-    const ads = canal !== 'instagram';
     el.innerHTML = meses.map(m => {
       const c = contagens.get(m.id) || { total: 0, aprovado: 0, ajuste: 0, pendente: 0, revisao: 0 };
       const pct = c.total ? Math.round(100 * c.aprovado / c.total) : 0;
@@ -1295,9 +1234,9 @@
       return `<button class="entrega${mes && m.id === mes.id ? ' on' : ''}" data-mes="${m.id}">
         <span class="entrega-topo"><b>${esc(m.titulo)}</b><small class="estado e-${estado === 'Rascunho' ? 'rascunho' : estado === 'Aprovado' ? 'ok' : estado === 'Arquivado' ? 'arquivo' : 'andando'}">${estado}</small></span>
         <span class="progresso" aria-hidden="true"><i style="width:${pct}%"></i></span>
-        <small>${c.total ? `${c.aprovado} de ${c.total} aprovados` : ads ? 'Nenhum anúncio ainda' : 'Nenhum post ainda'}${c.ajuste ? ` · ${c.ajuste} em ajuste` : ''}${c.revisao ? ` · ${c.revisao} em revisão` : ''}</small>
+        <small>${c.total ? `${c.aprovado} de ${c.total} aprovados` : 'Nenhum post ainda'}${c.ajuste ? ` · ${c.ajuste} em ajuste` : ''}${c.revisao ? ` · ${c.revisao} em revisão` : ''}</small>
       </button>`;
-    }).join('') + `<button class="entrega nova" id="entregaNova"><svg class="i" viewBox="0 0 16 16"><path d="M8 3v10M3 8h10"/></svg>${ads ? 'Nova campanha' : 'Novo mês'}</button>`;
+    }).join('') + `<button class="entrega nova" id="entregaNova"><svg class="i" viewBox="0 0 16 16"><path d="M8 3v10M3 8h10"/></svg>Novo mês</button>`;
     el.querySelectorAll('[data-mes]').forEach(b => b.onclick = () => { verEquipe(false); fecharFerramentas(); $('selMes').value = b.dataset.mes; selectMes(b.dataset.mes); });
     $('entregaNova').onclick = () => $('btnNovoMes').click();
   }
@@ -1343,7 +1282,8 @@
     $('geral').classList.add('carregando');
     try {
       // três meses para trás (números de aprovação) e um para frente (pauta da semana que vira o mês)
-      const ms = await run(sb.from('meses').select('*').in('cliente_id', ids).gte('ano_mes', PAINEL.somarMeses(sel, -2)).lte('ano_mes', PAINEL.somarMeses(sel, 1)));
+      const ms = (await run(sb.from('meses').select('*').in('cliente_id', ids).gte('ano_mes', PAINEL.somarMeses(sel, -2)).lte('ano_mes', PAINEL.somarMeses(sel, 1))))
+        .filter(m => CANAIS[m.canal || 'instagram']);
       const cols = 'id,mes_id,numero,data,tema,titulo,tipo,status,created_at,slides,capa_url' + (temPauta ? ',responsavel,interno' : '') + ',aprovacoes(acao,origem,created_at)';
       const ps = ms.length ? await run(sb.from('posts').select(cols).in('mes_id', ms.map(m => m.id)).order('ordem')) : [];
       if (!vendoGeral || $('geralMes').value !== sel) return;
@@ -1395,7 +1335,7 @@
   }
   async function abrirCliente(id, mesId) {
     const m = mesId && geral && geral.meses.find(x => x.id === mesId);
-    if (m && (m.canal || 'instagram') !== canal && (podeAds || (m.canal || 'instagram') === 'instagram')) { canal = m.canal || 'instagram'; $('selCanal').value = canal; }
+    if (m && (m.canal || 'instagram') !== canal) { canal = m.canal || 'instagram'; $('selCanal').value = canal; }
     mesPreferido = mesId || null;
     $('selCliente').value = id;
     await verGeral(false);
@@ -1462,15 +1402,13 @@
     editing = id;
     $('pNumero').value = p.numero || ''; $('pData').value = p.data || ''; $('pTema').value = p.tema || '';
     $('pTipo').value = p.tipo; $('pTitulo').value = p.titulo || ''; $('pLegenda').value = p.legenda || '';
-    $('pConjunto').value = p.conjunto || ''; $('pPublico').value = p.publico || '';
-    $('pDescricao').value = p.descricao || ''; $('pCta').value = p.cta || ''; $('pDestino').value = p.destino || '';
     files = [...(p.slides || []).map(u => ({ url: u, kind: 'image' })), ...(p.capa_url ? [{ url: p.capa_url, kind: 'image' }] : []), ...(p.video_url ? [{ url: p.video_url, kind: 'video' }] : [])];
-    renderThumbs(); ajustarArquivos();
+    renderThumbs();
     $('pResponsavel').value = p.responsavel || ''; $('pInterno').value = p.interno || '';
     // quem não é Head não tira um post da revisão interna (o banco também barra)
     [...$('pInterno').options].forEach(o => o.disabled = !o.value && p.interno === 'revisao' && nivel < 2);
     $('btnExcluirPost').hidden = nivel < 2;
-    $('postFormTitle').textContent = `${canal === 'instagram' ? 'Editando post' : 'Editando anúncio'} ${p.numero || ''}`.trim();
+    $('postFormTitle').textContent = `Editando post ${p.numero || ''}`.trim();
     $('msgPost').textContent = '';
     abrirPost(p);
   }

@@ -49,14 +49,23 @@ Um e-mail é uma conta. Para ter contas separadas por agência com a mesma caixa
 
 O link funciona como chave. **Invalidar link antigo e gerar outro** revoga o anterior. URLs temporárias de mídia já emitidas duram até uma hora. O status de um post só muda pela resposta do cliente ou por "marcar como ajustado".
 
-## Anúncios: Meta Ads e Google Ads
-Quem é gestor de tráfego, Head, sócio, dono ou administrador geral vê um seletor de **Canal** na barra lateral: Instagram · feed, Meta Ads e Google Ads. Designer, editor de vídeo e social media continuam só no feed, e nem enxergam as campanhas nem as artes delas. A regra é do banco (`pode_canal`), não da tela.
+## Canais: Instagram e LinkedIn
+Na barra lateral, **Canal** troca entre Instagram e LinkedIn. Os dois funcionam igual: mês, número, tema, título, legenda e artes (imagem, carrossel ou vídeo), com importar pasta, subir ajustes e roteiro. Cada cliente tem um mês de cada canal. O cliente aprova pelo mesmo link: a página ganha uma aba por canal com algo publicado, e o LinkedIn aparece em uma coluna, no formato do feed da rede. O link de um mês de LinkedIn leva o id da entrega (`#t=...&e=...`).
 
-Nos canais de anúncio a divisão é a mesma dos gerenciadores: **campanha → conjunto (ou grupo de anúncios) → anúncio**. A campanha tem nome, objetivo (Vendas, Tráfego, Performance Max, Pesquisa…) e mês de referência, e o mesmo mês aceita várias campanhas. O anúncio tem conjunto, público ou palavras-chave, formato, título, texto principal, descrição, botão e endereço de destino. O formato **só texto** existe para o anúncio de pesquisa do Google, que não tem arte. O endereço precisa ser `https://` e é conferido no banco.
+Meta Ads e Google Ads saíram do painel e do link do cliente. As campanhas antigas continuam guardadas no banco, sem aparecer em lugar nenhum, e as colunas de anúncio (`conjunto`, `publico`, `descricao`, `cta`, `destino`, `objetivo`) ficaram para não perder dado.
 
-O cliente aprova pelo mesmo link: a página dele ganha abas (Feed · Meta Ads · Google Ads), e só aparece a aba do canal que tem algo publicado. Cada anúncio tem o mesmo aprovar, pedir ajuste e comentar dos posts, com o mesmo histórico. Publicar a campanha continua sendo de Head para cima, como no feed.
+## Visão geral, entregas e pauta
+Ao entrar numa agência, o painel abre na **Visão geral**: os números do mês (posts, com o cliente, em ajuste, aprovados, atrasados) e um cartão por cliente com a barra de aprovados e o que está atrasado. Atrasado é post com dia previsto já passado e ainda sem aprovação. Duas abas completam a tela: **Pauta da semana**, com os posts de cada pessoa por dia, e **Aprovação**, com quanto tempo cada cliente costuma levar para responder, quantos ajustes pede por post e quanto aprova de primeira (últimos três meses). As contas ficam em `js/painel.js`, coberto por `tests/painel.mjs`.
 
-Tudo o mais é reaproveitado: importar pasta, baixar originais, limpeza, arquivamento e as fechaduras da mídia valem igual para os criativos.
+Dentro do cliente, os meses aparecem como **entregas**, com progresso. Os posts podem ser vistos em lista ou em quadro (Aguardando, Ajuste, Aprovado), e o formulário de post só abre ao criar ou editar. Os retornos do cliente atualizam sozinhos quando a aba volta a ficar visível.
+
+Cada post pode ter um **responsável** da equipe e ficar em **revisão interna** (o Head libera antes de o cliente ver) ou na **gaveta** (reserva, fora do link). O cliente não vê nem responde a post em revisão ou na gaveta, e só Head, sócio e dono tiram um post da revisão. Avisos e confirmações do painel saem de `js/ui.js`, no lugar das caixas do navegador.
+
+### Para ligar no projeto em uso
+1. Rode `supabase/pauta-e-linkedin.sql` no SQL Editor do Supabase. Pode rodar de novo sem estragar nada.
+2. Publique de novo a função `cliente` (`supabase functions deploy cliente`), que passou a aceitar o canal LinkedIn.
+
+Antes disso, o painel funciona sem responsável, revisão e gaveta (os campos nem aparecem), e um mês de LinkedIn não salva.
 
 ## Importar a pasta do mês
 Com o mês aberto, **Importar pasta** (no topo) lê uma pasta do computador e monta os posts. A regra: pasta com várias artes vira carrossel na ordem dos nomes, arte solta vira post de imagem, `.mp4` vira reel e puxa a capa de mesmo nome ou número. Pastas de categoria (`carrosseis`, `esteticos`, `feed`, `reels`, `stories`, `artes`…) são só organização e não viram post. Pastas de trabalho (`brutos`, `psd`, `editaveis`, `fontes`, `refs`, `backup`) e formatos fora de JPG, PNG, WebP, GIF e MP4 ficam de fora.

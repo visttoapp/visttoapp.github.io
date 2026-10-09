@@ -461,35 +461,6 @@ body.trocar-senha .main .wrap>:not(#cardSenha),body.trocar-senha .sidebar .side-
 .canais button:hover{background:var(--surface-3);color:var(--text)}
 .canais button.on{background:var(--brand-soft);border-color:var(--brand-border);color:var(--brand-text)}
 
-.ads{display:flex;flex-direction:column;gap:22px;margin-top:16px}
-.adgroup-head{display:flex;align-items:baseline;justify-content:space-between;gap:12px;margin-bottom:8px}
-.adgroup-head .label{margin:0}
-.adgroup-head small{font-size:12px;color:var(--text-3)}
-.adlist{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:12px}
-.adcard{display:flex;flex-direction:column;text-align:left;background:var(--surface);border:1px solid var(--border);border-radius:var(--r-lg);overflow:hidden;box-shadow:var(--shadow-soft);transition:transform .15s,box-shadow .15s}
-.adcard:hover{transform:translateY(-2px);border-color:var(--border-strong)}
-.adthumb{display:block;position:relative;aspect-ratio:1/1;background:var(--surface-3);overflow:hidden}
-.adthumb img,.adthumb video{width:100%;height:100%;object-fit:cover;display:block}
-.adbody{display:flex;flex-direction:column;gap:6px;padding:12px 14px 14px}
-.adnum{font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--text-3)}
-.adbody b{font-size:14px;font-weight:600;line-height:20px;color:var(--text)}
-.adtext{font-size:13px;line-height:19px;color:var(--text-2);display:-webkit-box;-webkit-line-clamp:2;line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
-.adfoot{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:2px}
-.adcta{display:inline-flex;align-items:center;padding:3px 10px;border-radius:var(--r-sm);background:var(--surface-3);border:1px solid var(--border);font-size:12px;font-weight:600;color:var(--text-2)}
-.adfoot .st{display:inline-flex;align-items:center;gap:6px;padding:2px 8px;border-radius:var(--r-sm);font-size:11px;font-weight:600;color:var(--text-2);background:var(--surface-3)}
-.adfoot .st.aprovado{background:var(--success-soft);color:var(--success);border:1px solid var(--success-border)}
-.adfoot .st.ajuste{background:var(--warning-soft);color:var(--warning);border:1px solid var(--warning-border)}
-
-/* anúncio de pesquisa do Google: só texto */
-.txtad{display:flex;flex-direction:column;gap:4px;padding:16px;height:100%;justify-content:center;background:var(--surface)}
-.txtad-top{display:flex;align-items:center;gap:8px}
-.txtad-tag{font-size:11px;font-weight:700;color:var(--text)}
-.txtad-url{font-size:12px;color:var(--text-2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.txtad b{font-size:16px;line-height:22px;font-weight:500;color:#1a0dab}
-.txtad-desc{font-size:13px;line-height:19px;color:var(--text-2)}
-body[data-tema="escuro"] .txtad b{color:#8ab4f8}
-.media .slide-texto{display:grid;place-items:center;padding:24px;background:var(--surface-2)}
-.media .slide-texto .txtad{max-width:520px;border:1px solid var(--border);border-radius:var(--r-lg);height:auto}
 .info .cap a{color:var(--brand-text);text-decoration:underline}
 
 /* relatório de retornos: existe só na impressão (Salvar como PDF). Cores fixas, para sair
@@ -574,6 +545,25 @@ body[data-tema="escuro"] .txtad b{color:#8ab4f8}
 .escolha-item small{color:var(--text-2);font-size:12.5px}
 .escolha-tag{flex:none;padding:2px 8px;border-radius:999px;background:var(--surface-2)}
 
+/* ================= LINKEDIN (página do cliente) ================= */
+.li-feed{display:flex;flex-direction:column;gap:16px;max-width:560px;margin:0 auto}
+.li-post{display:flex;flex-direction:column;text-align:left;background:var(--surface);border:1px solid var(--border);border-radius:var(--r-lg);overflow:hidden;box-shadow:var(--shadow-soft);color:var(--text);transition:border-color .15s,box-shadow .15s}
+.li-post:hover{border-color:var(--border-strong);box-shadow:var(--shadow-pop)}
+.li-head{display:flex;align-items:center;gap:10px;padding:14px 16px 10px}
+.li-av{width:44px;height:44px;flex:none;border-radius:var(--r-sm);overflow:hidden;display:grid;place-items:center;background:var(--brand-soft);color:var(--brand-text);font-weight:600;font-size:18px}
+.li-av img{width:100%;height:100%;object-fit:cover}
+.li-quem{display:flex;flex-direction:column;min-width:0;flex:1}
+.li-quem b{font-size:14px;font-weight:600}
+.li-quem small{font-size:12px;color:var(--text-2)}
+.li-post .st{flex:none;padding:2px 8px;border-radius:var(--r-sm);font-size:11px;font-weight:600;color:var(--text-2);background:var(--surface-3)}
+.li-post .st.aprovado{background:var(--success-soft);color:var(--success)}
+.li-post .st.ajuste{background:var(--warning-soft);color:var(--warning)}
+.li-texto{padding:0 16px 12px;font-size:14px;line-height:21px;white-space:pre-line;display:-webkit-box;-webkit-line-clamp:3;line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
+.li-midia{position:relative;display:block;background:var(--surface-3)}
+.li-midia img,.li-midia video{display:block;width:100%;height:auto;max-height:620px;object-fit:cover}
+.li-conta{position:absolute;right:10px;bottom:10px;display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:99px;background:rgba(17,24,28,.72);color:#fff;font-size:12px;font-weight:600}
+.li-conta svg{width:14px;height:14px}
+
 /* ================= AVISOS E CONFIRMAÇÕES (js/ui.js) ================= */
 .avisos{position:fixed;right:20px;bottom:20px;z-index:60;display:flex;flex-direction:column;gap:8px;align-items:flex-end;pointer-events:none}
 .toast{pointer-events:auto;max-width:380px;padding:10px 14px;border-radius:var(--r);background:var(--text);color:var(--surface);font-size:13px;line-height:18px;box-shadow:var(--shadow-pop);cursor:pointer;animation:toastEntra .18s ease-out}
@@ -594,7 +584,7 @@ body[data-tema="escuro"] .txtad b{color:#8ab4f8}
 @media (prefers-reduced-motion:reduce){.toast{animation:none}.toast.saindo{transition:none}}
 
 /* ================= VISÃO GERAL ================= */
-body.vendo-geral #entregas,body.vendo-geral #summary,body.vendo-geral #cardLink,body.vendo-geral #cardPost,body.vendo-geral .lista-card,body.vendo-geral .page-head .actions,body.vendo-geral .ferramenta,body.vendo-geral #cardMes{display:none!important}
+body.vendo-geral #boxMes,body.vendo-geral #entregas,body.vendo-geral #summary,body.vendo-geral #cardLink,body.vendo-geral #cardPost,body.vendo-geral .lista-card,body.vendo-geral .page-head .actions,body.vendo-geral .ferramenta,body.vendo-geral #cardMes{display:none!important}
 body.vendo-equipe #geral,body.vendo-espaco #geral,body.vendo-equipe #entregas,body.vendo-espaco #entregas{display:none!important}
 #geral{display:flex;flex-direction:column;gap:16px;margin-bottom:16px}
 #geral.carregando .kpis,#geral.carregando .cli-grid,#geral.carregando .card{opacity:.55;transition:opacity .2s}
@@ -638,7 +628,7 @@ body.vendo-equipe #geral,body.vendo-espaco #geral,body.vendo-equipe #entregas,bo
 .vazio-geral{grid-column:1/-1;padding:32px 16px;text-align:center;color:var(--text-2)}
 /* pauta da semana: pessoas nas linhas, dias nas colunas */
 .pauta-wrap{overflow-x:auto;margin:0 -20px -20px;border-top:1px solid var(--border)}
-.pauta{display:grid;grid-template-columns:180px repeat(7,minmax(130px,1fr));min-width:1100px}
+.pauta{display:grid;grid-template-columns:150px repeat(7,minmax(104px,1fr));min-width:880px}
 .pauta>.vazio-geral{grid-column:1/-1}
 .pauta-canto,.pauta-dia{padding:10px 12px;border-bottom:1px solid var(--border);background:var(--surface-2)}
 .pauta-dia b{display:block;font-size:12.5px;font-weight:600;text-transform:capitalize}
@@ -688,7 +678,7 @@ body.vendo-equipe #geral,body.vendo-espaco #geral,body.vendo-equipe #entregas,bo
 .pill.reserva{background:var(--surface-2);border-style:dashed;color:var(--text-3)}
 .row-actions button[data-liberar]{background:var(--brand-soft);border-color:var(--brand-border);color:var(--brand-text)}
 .lista-ferramentas .seg{align-self:center}
-.quadro{display:grid;grid-template-columns:repeat(var(--colunas,4),minmax(220px,1fr));gap:12px;overflow-x:auto;margin:0 -20px -20px;padding:16px 20px 20px;border-top:1px solid var(--border);background:var(--surface-2)}
+.quadro{display:grid;grid-template-columns:repeat(var(--colunas,4),minmax(180px,1fr));gap:12px;overflow-x:auto;margin:0 -20px -20px;padding:16px 20px 20px;border-top:1px solid var(--border);background:var(--surface-2)}
 .quadro-vazio{grid-column:1/-1;text-align:center;color:var(--text-2);padding:24px}
 .coluna{display:flex;flex-direction:column;gap:8px;min-width:0}
 .coluna header{display:flex;align-items:center;gap:8px;padding:4px 2px 6px;font-size:13px;font-weight:600;border-bottom:2px solid var(--border-strong)}
@@ -724,7 +714,6 @@ body.vendo-equipe #geral,body.vendo-espaco #geral,body.vendo-equipe #entregas,bo
   .admin .login{margin:16px;padding:24px}
   .backdrop{padding:0;align-items:flex-end}
   .modal{border-radius:var(--r-xl) var(--r-xl) 0 0;max-height:94vh}
-  .adlist{grid-template-columns:1fr}
   .aj{flex-wrap:wrap}
   .aj-info{flex-basis:100%}
   .aj-linha select{flex:1 1 100%}

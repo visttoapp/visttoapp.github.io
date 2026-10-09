@@ -8,7 +8,7 @@ Deno.serve(async req=>{
     const {token,mes,canal,entrega}=await req.json();
     if(typeof token!=='string'||! /^[a-f0-9]{24,64}$/.test(token))return reply(null);
     if(mes!==null && mes!==undefined && (typeof mes!=='string'||!/^\d{4}-\d{2}$/.test(mes)))return reply({error:'Mês inválido'},400);
-    if(canal!==null && canal!==undefined && !['instagram','meta','google'].includes(canal))return reply({error:'Canal inválido'},400);
+    if(canal!==null && canal!==undefined && !['instagram','linkedin'].includes(canal))return reply({error:'Canal inválido'},400);
     if(entrega!==null && entrega!==undefined && (typeof entrega!=='string'||!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(entrega)))return reply({error:'Entrega inválida'},400);
     const url=Deno.env.get('SUPABASE_URL')!;
     const sb=createClient(url,Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,{auth:{persistSession:false}});

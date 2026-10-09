@@ -1365,7 +1365,7 @@ revoke all on function public.get_mes(text,text,text,uuid) from public, anon, au
 grant execute on function public.get_mes(text,text,text,uuid) to service_role;
 commit;
 
--- ---------- pauta da equipe (supabase/pauta.sql) ----------
+-- ---------- pauta da equipe e LinkedIn (supabase/pauta-e-linkedin.sql) ----------
 -- Vistto · pauta da equipe. Rode uma vez no SQL Editor do Supabase (pode rodar de novo, não estraga nada).
 --  · posts.responsavel: quem da equipe cuida do post (precisa ser da agência do post).
 --  · posts.interno: 'revisao' (o Head aprova antes do cliente ver) ou 'reserva' (gaveta). Vazio = vai para o link.
@@ -1373,6 +1373,8 @@ commit;
 --    Só Head, sócio e dono tiram um post da revisão interna.
 --  · meses.publicado_em: quando o mês foi publicado, para medir quanto o cliente demora a responder.
 --  · membros_agencia(): nomes da equipe para escolher o responsável (qualquer pessoa da agência enxerga).
+--  · LinkedIn entra como canal de posts, igual ao feed: um mês por cliente, toda a equipe vê.
+--    Meta Ads e Google Ads saem do link do cliente. As campanhas antigas continuam guardadas, nada é apagado.
 begin;
 
 alter table public.posts add column if not exists responsavel uuid references auth.users(id) on delete set null;
@@ -1382,6 +1384,17 @@ alter table public.posts add constraint posts_interno_valido check (interno is n
 create index if not exists posts_responsavel_idx on public.posts(responsavel) where responsavel is not null;
 alter table public.meses add column if not exists publicado_em timestamptz;
 
+-- ---------- LinkedIn ----------
+alter table public.meses drop constraint if exists meses_canal_check;
+alter table public.meses add constraint meses_canal_check check (canal in ('instagram','linkedin','meta','google'));
+create unique index if not exists meses_um_linkedin_por_mes on public.meses(cliente_id, ano_mes) where canal = 'linkedin';
+create or replace function public.pode_canal(a uuid, k text) returns boolean language sql stable security definer set search_path='' as $$
+ select case when k in ('instagram','linkedin') then public.meu_nivel(a) >= 1
+   else public.meu_nivel(a) >= 2
+     or exists(select 1 from public.agencia_usuarios where agencia_id=a and usuario_id=auth.uid() and papel='gestor_trafego') end;
+$$;
+
+-- ---------- pauta ----------
 create or replace function public.validar_pauta() returns trigger language plpgsql security definer set search_path='' as $$
 declare cli uuid; ag uuid;
 begin
@@ -1425,7 +1438,7 @@ declare ok boolean;
 begin
   select exists (
     select 1 from posts p join meses m on m.id = p.mes_id join clientes c on c.id = m.cliente_id
-     where p.id = p_post_id and c.token = p_token and m.publicado and p.interno is null
+     where p.id = p_post_id and c.token = p_token and m.publicado and p.interno is null and m.canal in ('instagram','linkedin')
   ) into ok;
   if not ok then raise exception 'token inválido'; end if;
   if p_acao not in ('aprovado','ajuste','comentario') then raise exception 'ação inválida'; end if;
@@ -1443,7 +1456,7 @@ end $$;
 revoke all on function public.registrar_aprovacao(text,uuid,text,text,text) from public;
 grant execute on function public.registrar_aprovacao(text,uuid,text,text,text) to anon, authenticated;
 
--- O link do cliente não mostra post em revisão interna nem na gaveta.
+-- O link do cliente mostra feed e LinkedIn, sem post em revisão interna nem na gaveta.
 create or replace function public.get_mes(p_token text, p_ano_mes text default null, p_canal text default null, p_entrega uuid default null)
 returns jsonb language plpgsql security definer set search_path = public as $$
 declare c clientes; m meses; k text; canais jsonb; result jsonb;
@@ -1452,19 +1465,19 @@ begin
   if c.id is null then return null; end if;
 
   select coalesce(jsonb_agg(jsonb_build_object('canal', x.canal, 'entregas', x.n)
-      order by case x.canal when 'instagram' then 0 when 'meta' then 1 else 2 end), '[]')
+      order by case x.canal when 'instagram' then 0 else 1 end), '[]')
     into canais
-    from (select canal, count(*) n from meses where cliente_id = c.id and publicado group by canal) x;
+    from (select canal, count(*) n from meses where cliente_id = c.id and publicado and canal in ('instagram','linkedin') group by canal) x;
 
   if p_entrega is not null then
-    select * into m from meses where id = p_entrega and cliente_id = c.id and publicado;
+    select * into m from meses where id = p_entrega and cliente_id = c.id and publicado and canal in ('instagram','linkedin');
   end if;
   k := coalesce(m.canal, nullif(p_canal, ''), 'instagram');
-  if k not in ('instagram','meta','google') then k := 'instagram'; end if;
+  if k not in ('instagram','linkedin') then k := 'instagram'; end if;
   if m.id is null then
     if p_canal is null and not exists(select 1 from meses where cliente_id = c.id and publicado and canal = k) then
-      k := coalesce((select canal from meses where cliente_id = c.id and publicado
-                      order by case canal when 'instagram' then 0 when 'meta' then 1 else 2 end limit 1), k);
+      k := coalesce((select canal from meses where cliente_id = c.id and publicado and canal in ('instagram','linkedin')
+                      order by case canal when 'instagram' then 0 else 1 end limit 1), k);
     end if;
     select * into m from meses
       where cliente_id = c.id and publicado and canal = k

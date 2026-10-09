@@ -65,16 +65,15 @@
       <select id="selCliente"></select>
     </div>
 
-    <div class="side-section" id="boxCanal" hidden>
+    <div class="side-section" id="boxCanal">
       <label for="selCanal" class="label">Canal</label>
       <select id="selCanal">
-        <option value="instagram">Instagram · feed</option>
-        <option value="meta">Meta Ads</option>
-        <option value="google">Google Ads</option>
+        <option value="instagram">Instagram</option>
+        <option value="linkedin">LinkedIn</option>
       </select>
     </div>
 
-    <div class="side-section">
+    <div class="side-section" id="boxMes">
       <div class="row"><label for="selMes" class="label" id="lblMes">Mês</label><button class="add" id="btnNovoMes"><svg class="i" viewBox="0 0 16 16"><path d="M8 3v10M3 8h10"/></svg>Novo</button></div>
       <select id="selMes"></select>
     </div>
@@ -186,7 +185,6 @@
         <div class="form-grid">
           <div class="field"><label class="label" for="mAnoMes" id="lblAnoMes">Ano e mês</label><input id="mAnoMes" placeholder="2026-10"></div>
           <div class="field"><label class="label" for="mTitulo" id="lblTituloMes">Título</label><input id="mTitulo" placeholder="Outubro 2026"></div>
-          <div class="field" id="fldObjetivo" hidden><label class="label" for="mObjetivo">Objetivo</label><select id="mObjetivo"></select></div>
           <div class="field full"><label class="label" for="mIntro" id="lblIntroMes">Introdução <span class="hint">(opcional)</span></label><textarea id="mIntro" rows="2" placeholder="Mensagem que aparece no topo da prévia"></textarea></div>
         </div>
         <div class="actions"><button class="btn primary" id="btnSalvarMes">Salvar mês</button><button class="btn ghost" id="btnFecharMes">Cancelar</button></div>
@@ -240,8 +238,6 @@
         <div class="msg" id="msgExportar" role="status"></div>
       </div>
 
-      <div class="summary" id="summary"></div>
-
       <!-- PUBLICAÇÃO -->
       <div class="card" id="cardLink" hidden>
         <div class="publish">
@@ -262,16 +258,11 @@
           <div class="field"><label class="label" for="pNumero" id="lblNumero">Número</label><input id="pNumero" placeholder="01"></div>
           <div class="field"><label class="label" for="pData" id="lblData">Data prevista</label><input id="pData" placeholder="09/10"></div>
           <div class="field" id="fldTema"><label class="label" for="pTema">Tema</label><input id="pTema" placeholder="Design · confiança"></div>
-          <div class="field" id="fldConjunto" hidden><label class="label" for="pConjunto" id="lblConjunto">Conjunto de anúncios</label><input id="pConjunto" maxlength="80" placeholder="Remarketing 30 dias"></div>
           <div class="field"><label class="label" for="pTipo">Formato</label><select id="pTipo"></select></div>
           <div class="field" id="fldResponsavel" hidden><label class="label" for="pResponsavel">Responsável</label><select id="pResponsavel"></select></div>
           <div class="field" id="fldInterno" hidden><label class="label" for="pInterno">Onde está</label><select id="pInterno"><option value="">No link do cliente</option><option value="revisao">Em revisão interna (o cliente ainda não vê)</option><option value="reserva">Na gaveta (fora do link)</option></select></div>
-          <div class="field full" id="fldPublico" hidden><label class="label" for="pPublico" id="lblPublico">Público</label><input id="pPublico" maxlength="300" placeholder="Mulheres 25-45, raio de 10 km, interesse em confeitaria"></div>
           <div class="field full"><label class="label" for="pTitulo" id="lblTitulo">Título <span class="hint">(use &lt;em&gt;palavra&lt;/em&gt; para destacar)</span></label><input id="pTitulo" placeholder="Título do post"></div>
           <div class="field full"><label class="label" for="pLegenda" id="lblLegenda">Legenda</label><textarea id="pLegenda" rows="5" placeholder="Legenda completa"></textarea></div>
-          <div class="field full" id="fldDescricao" hidden><label class="label" for="pDescricao">Descrição</label><input id="pDescricao" maxlength="300" placeholder="Linha de apoio que aparece abaixo do título"></div>
-          <div class="field" id="fldCta" hidden><label class="label" for="pCta">Botão</label><select id="pCta"></select></div>
-          <div class="field" id="fldDestino" hidden><label class="label" for="pDestino">Endereço de destino</label><input id="pDestino" maxlength="300" placeholder="https://..."></div>
           <div class="field full" id="fldArquivos"><span class="label">Arquivos</span><div class="thumbs" id="thumbs"></div><div class="drop" id="drop"><span><b>Clique para enviar</b> ou arraste aqui</span><span class="hint">JPG, PNG, WebP, GIF ou MP4 · até 50 MB</span></div></div>
         </div>
         <input type="file" id="file" multiple accept="image/*,video/mp4" hidden>
