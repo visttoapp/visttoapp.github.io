@@ -5,13 +5,23 @@ Deno.serve(async req=>{
   if(req.method==='OPTIONS')return new Response('ok',{headers:cors});
   if(req.method!=='POST')return reply({error:'Método inválido'},405);
   try {
-    const {token,mes,canal,entrega}=await req.json();
-    if(typeof token!=='string'||! /^[a-f0-9]{24,64}$/.test(token))return reply(null);
+    const {token:chave,curto,mes,canal,entrega}=await req.json();
+    // link curto: identificador do cliente + código de 8 letras, trocados pelo token aqui no servidor
+    if(curto!==null && curto!==undefined && (typeof curto!=='object'||typeof curto.cliente!=='string'||typeof curto.codigo!=='string'
+      ||!/^[a-z0-9][a-z0-9-]{0,79}$/.test(curto.cliente)||!/^[a-z2-9]{8}$/.test(curto.codigo)))return reply(null);
+    if(!curto && (typeof chave!=='string'||! /^[a-f0-9]{24,64}$/.test(chave)))return reply(null);
     if(mes!==null && mes!==undefined && (typeof mes!=='string'||!/^\d{4}-\d{2}$/.test(mes)))return reply({error:'Mês inválido'},400);
     if(canal!==null && canal!==undefined && !['instagram','linkedin'].includes(canal))return reply({error:'Canal inválido'},400);
     if(entrega!==null && entrega!==undefined && (typeof entrega!=='string'||!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(entrega)))return reply({error:'Entrega inválida'},400);
     const url=Deno.env.get('SUPABASE_URL')!;
     const sb=createClient(url,Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,{auth:{persistSession:false}});
+    let token=chave;
+    if(curto){
+      const {data:t,error:e}=await sb.rpc('resolver_link',{p_slug:curto.cliente,p_codigo:curto.codigo});
+      if(e)throw e;
+      if(typeof t!=='string'||! /^[a-f0-9]{24,64}$/.test(t))return reply(null);
+      token=t;
+    }
     const {data,error}=await sb.rpc('get_mes',{p_token:token,p_ano_mes:mes||null,p_canal:canal||null,p_entrega:entrega||null});
     if(error)throw error;
     if(!data)return reply(null);
@@ -50,6 +60,8 @@ Deno.serve(async req=>{
       p.slides=await Promise.all((p.slides||[]).map(signed));
       p.video_url=await signed(p.video_url);p.capa_url=await signed(p.capa_url);
     }));
+    // quem abriu pelo link curto precisa do token para responder (aprovar, pedir ajuste, comentar)
+    if(curto)data.token=token;
     return reply(data);
   } catch {return reply({error:'Não foi possível carregar o conteúdo'},400);}
 });

@@ -47,7 +47,9 @@ Um e-mail é uma conta. Para ter contas separadas por agência com a mesma caixa
 4. O cliente abre o link, aprova, comenta ou pede ajuste.
 5. No painel, **Atualizar aprovações** traz os retornos. Depois da correção, **marcar como ajustado** pede nova aprovação.
 
-O link funciona como chave. **Invalidar link antigo e gerar outro** revoga o anterior. URLs temporárias de mídia já emitidas duram até uma hora. O status de um post só muda pela resposta do cliente ou por "marcar como ajustado".
+O link que o painel copia é curto e legível: `visttoapp.github.io/c#prime-plus/k7f3q2m9/outubro-2026` (no LinkedIn, `.../linkedin-outubro-2026`). O identificador do cliente (o campo Identificador, no cadastro) e o mês ficam à mostra; o código de 8 letras é a chave. A função `cliente` troca identificador e código pelo token (`resolver_link`, só o servidor chama) e devolve o token para a página registrar as respostas. Trocar o identificador do cliente muda o link. O formato antigo, `#t=<token>&m=...`, continua valendo; a leitura e a montagem ficam em `js/link.js`, coberto por `tests/link.mjs`.
+
+O link funciona como chave. **Invalidar link antigo e gerar outro** revoga o anterior, no formato curto e no antigo. URLs temporárias de mídia já emitidas duram até uma hora. O status de um post só muda pela resposta do cliente ou por "marcar como ajustado".
 
 ## Canais: Instagram e LinkedIn
 Na barra lateral, **Canal** troca entre Instagram e LinkedIn. Os dois funcionam igual: mês, número, tema, título, legenda e artes (imagem, carrossel ou vídeo), com importar pasta, subir ajustes e roteiro. Cada cliente tem um mês de cada canal. O cliente aprova pelo mesmo link: a página ganha uma aba por canal com algo publicado, e o LinkedIn aparece em uma coluna, no formato do feed da rede. O link de um mês de LinkedIn leva o id da entrega (`#t=...&e=...`).
@@ -61,11 +63,12 @@ Dentro do cliente, os meses aparecem como **entregas**, com progresso. Os posts 
 
 Cada post pode ter um **responsável** da equipe e ficar em **revisão interna** (o Head libera antes de o cliente ver) ou na **gaveta** (reserva, fora do link). O cliente não vê nem responde a post em revisão ou na gaveta, e só Head, sócio e dono tiram um post da revisão. Avisos e confirmações do painel saem de `js/ui.js`, no lugar das caixas do navegador.
 
-### Para ligar no projeto em uso
-1. Rode `supabase/pauta-e-linkedin.sql` no SQL Editor do Supabase. Pode rodar de novo sem estragar nada.
-2. Publique de novo a função `cliente` (`supabase functions deploy cliente`), que passou a aceitar o canal LinkedIn.
+### Para ligar o link curto no projeto em uso
+Nesta ordem (ao contrário, o painel passa a copiar um link curto que a função ainda não sabe abrir):
+1. Publique de novo a função `cliente` (no painel do Supabase, Edge Functions › cliente › Code, colando o `supabase/functions/cliente/index.ts` inteiro, ou `supabase functions deploy cliente --no-verify-jwt`).
+2. Rode `supabase/link-curto.sql` no SQL Editor. Pode rodar de novo sem estragar nada.
 
-Antes disso, o painel funciona sem responsável, revisão e gaveta (os campos nem aparecem), e um mês de LinkedIn não salva.
+Antes disso, o painel continua copiando o link antigo, que segue funcionando.
 
 ## Importar a pasta do mês
 Com o mês aberto, **Importar pasta** (no topo) lê uma pasta do computador e monta os posts. A regra: pasta com várias artes vira carrossel na ordem dos nomes, arte solta vira post de imagem, `.mp4` vira reel e puxa a capa de mesmo nome ou número. Pastas de categoria (`carrosseis`, `esteticos`, `feed`, `reels`, `stories`, `artes`…) são só organização e não viram post. Pastas de trabalho (`brutos`, `psd`, `editaveis`, `fontes`, `refs`, `backup`) e formatos fora de JPG, PNG, WebP, GIF e MP4 ficam de fora.
@@ -111,7 +114,7 @@ O número e a data do post são limitados no banco a texto simples e curto, e a 
 - A função `acessos` valida a sessão e o nível de quem cadastra antes de criar a conta. Ambas usam `verify_jwt=false` (ver `supabase/config.toml`); a chave privilegiada fica só no servidor.
 
 ### Banco
-As migrações já aplicadas no projeto em uso ficam em `supabase/historico/` (`multi-agencias.sql`, `hierarquia.sql`, `squads.sql`, `convites.sql`, `divisoes.sql`, `gestores.sql`, `espaco.sql`, `r2.sql`, `endurecer.sql`, `espaco-r2.sql` e `anuncios.sql`, nesta ordem). **Não execute de novo.** Elas continuam no repositório porque os testes montam o banco a partir delas. Migração nova fica na raiz de `supabase/` até ser aplicada, e depois vai para `historico/`. `schema.sql` é a instalação completa para um banco novo.
+As migrações já aplicadas no projeto em uso ficam em `supabase/historico/` (`multi-agencias.sql`, `hierarquia.sql`, `squads.sql`, `convites.sql`, `divisoes.sql`, `gestores.sql`, `espaco.sql`, `r2.sql`, `endurecer.sql`, `espaco-r2.sql`, `anuncios.sql` e `pauta-e-linkedin.sql`, nesta ordem). **Não execute de novo.** Elas continuam no repositório porque os testes montam o banco a partir delas. Migração nova fica na raiz de `supabase/` até ser aplicada, e depois vai para `historico/`. `schema.sql` é a instalação completa para um banco novo.
 
 Instalação nova: execute `schema.sql`, crie a primeira conta no Supabase Auth, cadastre o UUID em `administradores`, ajuste os nomes em `agencias`, configure `js/config.js` com a URL e a publishable key, publique as funções `cliente`, `acessos`, `primeiro-acesso`, `midia` e `limpeza` e configure a URL do site no Auth.
 

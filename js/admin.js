@@ -293,7 +293,7 @@
       $('accessNome').value='';$('accessEmail').value='';$('accessMsg').textContent=instrucao(nome,email,j.codigo);await accessList();
     }catch(e){$('accessMsg').textContent=e.message;}finally{btn.disabled=false;}
   };
-  $('btnRotate').onclick=async()=>{if(!cliente||nivel<2||!await confirmar('O link que o cliente tem hoje deixa de funcionar. Você vai precisar mandar o novo.',{titulo:'Gerar um link novo?',ok:'Gerar link novo',perigo:true}))return;cliente.token=await run(sb.rpc('renovar_link',{p_cliente:cliente.id}));renderTop();};
+  $('btnRotate').onclick=async()=>{if(!cliente||nivel<2||!await confirmar('O link que o cliente tem hoje deixa de funcionar. Você vai precisar mandar o novo.',{titulo:'Gerar um link novo?',ok:'Gerar link novo',perigo:true}))return;cliente.token=await run(sb.rpc('renovar_link',{p_cliente:cliente.id}));const r=await sb.rpc('link_curto',{p_cliente:cliente.id});cliente.codigo=!r.error&&r.data||null;aviso('Link novo gerado. O anterior parou de funcionar.');renderTop();};
   // abrir: id do cliente para abrir em seguida (depois de salvar um). Sem ele, fica na visão geral.
   async function loadClientes(pronto, abrir) {
     const { data, error } = await (pronto || sb.from('clientes').select(COLS).eq('agencia_id', agencia.id).order('nome'));
@@ -320,11 +320,13 @@
     meses = []; mes = null; posts=[]; fecharPost(); contagens = new Map();
     if (!cliente) { $('selMes').innerHTML = ''; renderTop(); renderLista(); renderEntregas(); return; }
     const c = cliente;
-    const [data, token] = await Promise.all([
+    const [data, token, curto] = await Promise.all([
       run(sb.from('meses').select('*').eq('cliente_id', c.id).order('ano_mes', { ascending: false }).order('created_at', { ascending: false })),
-      nivel >= 2 && !c.token ? run(sb.rpc('link_cliente', { p_cliente: c.id })) : null
+      nivel >= 2 && !c.token ? run(sb.rpc('link_cliente', { p_cliente: c.id })) : null,
+      nivel >= 2 && !c.codigo ? sb.rpc('link_curto', { p_cliente: c.id }) : null   // sem supabase/link-curto.sql, fica o link antigo
     ]);
     if (token) c.token = token;
+    if (curto && !curto.error && curto.data) c.codigo = curto.data;
     if (cliente !== c) return;   // trocaram de cliente enquanto carregava
     todosMeses = (data || []).filter(m => CANAIS[m.canal || 'instagram']);
     // quantos posts em cada etapa, por mês: um pedido só, para as entregas
@@ -389,7 +391,8 @@
     $('chkPub').disabled = !mes || nivel < 2;
     const base = new URL('c',location.href).href;
     const alvo = !mes ? '' : canal === 'instagram' ? '&m=' + mes.ano_mes : '&e=' + mes.id;
-    $('linkCliente').textContent = cliente && cliente.token ? `${base}#t=${cliente.token}${alvo}` : '—';
+    const curto = cliente && LINK.montar(base, cliente.slug, cliente.codigo, mes && mes.ano_mes, canal);
+    $('linkCliente').textContent = curto || (cliente && cliente.token ? `${base}#t=${cliente.token}${alvo}` : '—');
     if (!mes) fecharPost();
     $('btnNovoPost').hidden = !mes;
     $('cardLink').hidden = nivel < 2 || !cliente;
@@ -427,9 +430,12 @@
     $('cardCliente').hidden = true;
     await loadClientes();
   };
+  // o identificador aparece no link do cliente: sem acento, sem espaço, só letras, números e hífen
+  const paraSlug = t => String(t || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 80);
+  $('cNome').addEventListener('input', () => { if (!$('cardCliente').dataset.id) $('cSlug').value = paraSlug($('cNome').value); });
   $('btnSalvarCliente').onclick = async () => {
     const id = $('cardCliente').dataset.id;
-    const row = { agencia_id: agencia.id, nome: $('cNome').value.trim(), slug: $('cSlug').value.trim().toLowerCase().replace(/[^a-z0-9-]/g, '-'), handle: $('cHandle').value.trim(), avatar_url: $('cAvatar').value.trim() || null, bio: $('cBio').value.trim(), squad_id: $('cSquad').value || null };
+    const row = { agencia_id: agencia.id, nome: $('cNome').value.trim(), slug: paraSlug($('cSlug').value), handle: $('cHandle').value.trim(), avatar_url: $('cAvatar').value.trim() || null, bio: $('cBio').value.trim(), squad_id: $('cSquad').value || null };
     if (!row.nome || !row.slug) { $('msgCliente').textContent = 'Nome e slug são obrigatórios.'; $('msgCliente').className = 'msg err'; return; }
     const q = id ? sb.from('clientes').update(row).eq('id', id).select(COLS).single() : sb.from('clientes').insert(row).select(COLS).single();
     const { data, error } = await q;

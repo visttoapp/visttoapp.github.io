@@ -15,8 +15,8 @@ create function extensions.gen_random_bytes(n integer) returns bytea language sq
 const rd = f => fs.readFileSync(new URL(f, import.meta.url), 'utf8');
 await db.exec(rd('./fixtures/schema-v1.sql').replace('create extension if not exists pgcrypto;', ''));
 for (const f of ['multi-agencias', 'hierarquia', 'squads', 'convites', 'divisoes', 'gestores', 'espaco', 'r2', 'endurecer', 'espaco-r2', 'anuncios']) await db.exec(rd(`../supabase/historico/${f}.sql`));
-await db.exec(rd('../supabase/pauta-e-linkedin.sql'));
-await db.exec(rd('../supabase/pauta-e-linkedin.sql'));   // rodar de novo não pode quebrar
+await db.exec(rd('../supabase/historico/pauta-e-linkedin.sql'));
+await db.exec(rd('../supabase/historico/pauta-e-linkedin.sql'));   // rodar de novo não pode quebrar
 
 const A = { a: '10000000-0000-4000-8000-000000000001', b: '10000000-0000-4000-8000-000000000002' };
 const P = { dono: ['b', 'dono'], head: ['b', 'head'], des: ['b', 'designer'], outra: ['a', 'designer'], fora: null };
