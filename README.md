@@ -115,3 +115,15 @@ Instalação nova: execute `schema.sql`, crie a primeira conta no Supabase Auth,
 
 ### Verificação
 `npm install` e `npm test` na raiz. Os testes usam PGlite com usuários fictícios para conferir isolamento, níveis e funções.
+
+## Pacote da Forno
+`forno/vistto-forno.zip` é o Vistto só com a Forno, pronto para instalar no projeto do Supabase do taskmanager (`forno-task`), em um schema próprio (`vistto`) que não encosta no `public`. Dentro: `1-supabase/` (banco, primeiro administrador e funções `vistto-*`), `2-github/` (site), `3-cloudflare-r2/` (Worker e bucket), `4-migrar-dados/` (traz os dados da Forno deste projeto) e `verificar/` (testes). Cada pasta tem um `LEIA-ME.md`.
+
+O zip é gerado a partir deste código: `forno/transformar.mjs` faz as trocas (cada uma confere quantas vezes aconteceu) e `npm run forno` monta o pacote e confere tudo:
+
+- a suíte inteira de `tests/` contra a versão no schema `vistto`;
+- a equivalência com o `schema.sql` objeto por objeto;
+- a migração de ponta a ponta (dois projetos e dois Workers de mentira);
+- os testes que vão dentro do zip.
+
+Depois de mudar o Vistto, rode `npm run forno` de novo para atualizar o pacote.
