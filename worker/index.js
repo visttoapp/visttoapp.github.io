@@ -17,10 +17,11 @@ const LIMITE = 100 * 1024 * 1024;
 
 const cabecalhos = (req, extra = {}) => {
   const origem = req.headers.get('Origin') || '';
-  const h = { 'Cache-Control': 'no-store', ...extra };
+  // Vary sempre: sem ele, a cópia que a <img> guardou (pedido sem Origin, sem CORS) é reaproveitada
+  // pelo fetch do "baixar", e o navegador bloqueia.
+  const h = { 'Cache-Control': 'no-store', Vary: 'Origin', ...extra };
   if (ORIGENS.includes(origem)) {
     h['Access-Control-Allow-Origin'] = origem;
-    h['Vary'] = 'Origin';
     h['Access-Control-Allow-Headers'] = 'content-type';
     h['Access-Control-Allow-Methods'] = 'GET, PUT, DELETE, OPTIONS';
     h['Access-Control-Max-Age'] = '86400';
