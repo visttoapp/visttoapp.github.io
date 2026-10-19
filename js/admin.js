@@ -1005,7 +1005,9 @@
         return refs.length > 1 ? `${base}_${String(i + 1).padStart(2, '0')}.${extensao(r)}` : `${base}.${extensao(r)}`;
       });
       const blobs = await Promise.all(refs.map(async r => {
-        const res = await fetch(MEDIA.url(r));
+        // no-store: a miniatura já carregou este mesmo link sem CORS, e a cópia guardada pelo
+        // navegador não serve para o fetch ("Failed to fetch"). Pedir de novo ao Worker resolve.
+        const res = await fetch(MEDIA.url(r), { cache: 'no-store' });
         if (!res.ok) throw new Error('Um dos arquivos não pôde ser baixado (' + res.status + ').');
         return res.blob();
       }));

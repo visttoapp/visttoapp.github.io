@@ -10,6 +10,7 @@
     image: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="3" y="3" width="18" height="18" rx="1"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg>',
     close: '<svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M2 2l8 8M10 2l-8 8"/></svg>',
     prev: '<svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M8 2 4 6l4 4"/></svg>',
+    baixar: '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M8 2.5v8M4.5 7 8 10.5 11.5 7M3 13.5h10"/></svg>',
     next: '<svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M4 2l4 4-4 4"/></svg>'
   };
   const LABEL = { carousel: 'Carrossel', reel: 'Reel · Vídeo', image: 'Imagem' };
@@ -207,10 +208,61 @@
   }
   function bindReview(root, p) {
     root.querySelectorAll('.review [data-acao]').forEach(b => b.onclick = () => send(root, p, b.dataset.acao));
+    const bx = root.querySelector('[data-baixar]'); if (bx) bx.onclick = () => baixar(p, bx);
+  }
+
+  /* ---------- baixar a arte do post ---------- */
+  // Uma imagem sai como está; carrossel e reel com capa saem num .zip. Os links valem uma hora.
+  const arquivosDe = p => (p.tipo === 'reel' ? [p.video_url, p.capa_url] : (p.slides || [])).filter(Boolean);
+  const slugArq = t => String(t || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+  const extDe = u => { const m = String(u).split(/[?#]/)[0].match(/\.([a-z0-9]{2,5})$/i); return m ? m[1].toLowerCase() : 'jpg'; };
+  function salvar(blob, nome) {
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob); a.download = nome;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(a.href), 60000);
+  }
+  let zipPronto;
+  const carregarZip = () => zipPronto ||= new Promise((ok, erro) => {
+    if (window.JSZip) return ok(window.JSZip);
+    const sc = document.createElement('script');
+    sc.src = 'js/vendor/jszip.min.js?v=3.10.1';
+    sc.onload = () => ok(window.JSZip);
+    sc.onerror = () => { zipPronto = null; erro(new Error('não deu para montar o .zip')); };
+    document.head.appendChild(sc);
+  });
+  async function baixar(p, botao) {
+    const urls = arquivosDe(p);
+    if (!urls.length || botao.disabled) return;
+    const base = [slugArq(data.cliente.nome) || 'post', data.mes.ano_mes, 'post-' + (slugArq(p.numero) || pad(p.idx + 1))].filter(Boolean).join('_');
+    const nomes = urls.map((u, i) => p.tipo === 'reel' ? `${base}_${u === p.video_url ? 'video' : 'capa'}.${extDe(u)}`
+      : urls.length > 1 ? `${base}_${pad(i + 1)}.${extDe(u)}` : `${base}.${extDe(u)}`);
+    const antes = botao.innerHTML;
+    const volta = (texto, ms) => { botao.textContent = texto; setTimeout(() => { botao.innerHTML = antes; botao.disabled = false; botao.title = ''; }, ms); };
+    botao.disabled = true; botao.textContent = 'Baixando…';
+    try {
+      // no-store: a miniatura já carregou o mesmo link sem CORS, e essa cópia guardada não serve ao fetch
+      const blobs = await Promise.all(urls.map(async u => {
+        const r = await fetch(u, { cache: 'no-store' });
+        if (!r.ok) throw new Error(r.status === 403 ? 'o link da arte venceu: recarregue a página' : `um arquivo não veio (${r.status})`);
+        return r.blob();
+      }));
+      if (blobs.length === 1) salvar(blobs[0], nomes[0]);
+      else {
+        const JSZip = await carregarZip(), zip = new JSZip();
+        blobs.forEach((b, i) => zip.file(nomes[i], b, { binary: true }));
+        salvar(await zip.generateAsync({ type: 'blob', compression: 'STORE' }), base + '.zip');
+      }
+      volta('Baixado', 1500);
+    } catch (e) {
+      botao.title = e.message || '';
+      volta('Não deu: ' + (e.message || 'tente de novo'), 4000);
+    }
   }
   function infoHTML(p, total) {
     return `<div class="label">Post ${esc(p.numero)} &nbsp;·&nbsp; ${(li ? LABEL_LINKEDIN : LABEL)[p.tipo] || 'Imagem'}${total > 1 ? ` · ${total} imagens` : ''}${p.data ? ` &nbsp;·&nbsp; ${esc(p.data)}` : ''}</div>
         <h3>${rich(p.titulo)}</h3>
+        ${arquivosDe(p).length ? `<button type="button" class="btn sm baixar" data-baixar>${I.baixar}${p.tipo === 'reel' ? 'Baixar vídeo' : arquivosDe(p).length > 1 ? `Baixar as ${arquivosDe(p).length} imagens` : 'Baixar imagem'}</button>` : ''}
         <div class="label">${li ? 'Texto do post' : 'Legenda'}</div>
         <div class="cap">${esc(p.legenda)}</div>
         ${reviewHTML(p)}`;

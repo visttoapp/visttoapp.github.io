@@ -721,6 +721,9 @@ body[data-vista="post"] .wrap.feed-wrap{max-width:1080px}
   .pv-info{padding:16px 16px 20px}
 }
 
+.info .baixar{align-self:flex-start;display:inline-flex;align-items:center;gap:6px;margin:-4px 0 14px}
+.info .baixar svg{width:14px;height:14px}
+
 /* ================= CELULAR =================
    Fica no fim do arquivo para valer sobre as regras de cima. CSS novo entra antes daqui. */
 @media (max-width:640px){
